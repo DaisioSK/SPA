@@ -1,0 +1,125 @@
+1 - Parent(1) // select stmt that is child of stmt 3
+stmt s;
+Select s such that Parent(3, s)
+4
+5000
+2 - Parent(2) //select stmt that is parent of stmt 6
+stmt s;
+Select s such that Parent(s, 6)
+5
+5000
+3 - Parent(3) // select the assgin stmt that is under any while loop
+assign a; while w;
+Select a such that Parent*(w, a)
+4, 6, 7
+5000
+4 - Uses(1) //select assign stmt that uses num1
+assign a;
+Select a such that Uses(a, "num1")
+6
+5000
+5 - Uses(2) // select assign stmt that uses num2
+assign a;
+Select a such that Uses(a, "num2")
+4, 6
+5000
+6 - Uses(3) // select variable that stmt 6 is using
+variable v;
+Select v such that Uses(6, v)
+num1, num2
+5000
+7 - Modify(1) // select assign stmt that modifies num1
+assign a;
+Select a such that Modifies(a, "num1")
+1, 6
+5000
+8 - Modify(2) // select assign stmt that modifies num2
+assign a;
+Select a such that Modifies(a, "num2")
+2, 4, 7
+5000
+9 - Modify(3) // select assign stmt that modifies num3
+assign a;
+Select a such that Modifies(a, "num3")
+none
+5000
+10 - Next(1) // select stmt that is immediately after stmt 1
+stmt s;
+Select s such that Next(1, s)
+2
+5000
+11 - Next(2) // select all stmts that is possiblely after stmt 5
+stmt s;
+Select s such that Next*(5, s)
+6, 7
+5000
+12 - Next(3) // select stmt that is immediately after stmt 3
+stmt s;
+Select s such that Next(3, s)
+4, 5
+5000
+13 - Pattern(1) // select assign stmt that contain sub expression "num2 + 1"
+assign a;
+Select a pattern a (_, _"num2 + 1"_);
+4
+5000
+14 - Pattern(2) // select assign stmt that contain sub expression "num2"
+assign a;
+Select a pattern a (_, _"num2"_);
+4, 6
+5000
+15 - Pattern(3) // select assign stmt that contain sub expression "num1 + 1"
+assign a;
+Select a pattern a (_, _"num1 + 1"_);
+none
+5000
+16 - Combination(1) // select stmt that is child of stmt 3 and contains sub expression "num2"
+stmt s;
+Select s such that Parent(3, s) pattern s (_, _"num2"_)
+4
+5000
+17 - Combination(2) // select stmt that is child of stmt 3 and contains sub expression "num1"
+stmt s;
+Select s such that Parent(3, s) pattern s (_, _"num1"_)
+none
+5000
+18 - Combination(3) // select assgin stmt that uses num1 and contains sub expression "num1"
+assign a;
+Select a such that Uses(a, "num1") pattern a (_, _"num1"_)
+6
+5000
+19 - Combination(4) // select assgin stmt that uses num1 and contains sub expression "num2 * num2"
+assign a;
+Select a such that Uses(a, "num1") pattern a (_, _"num2 * num2"_)
+none
+5000
+20 - Combination(5) // select assgin stmt that modifies num1 and contains sub expression "num1"
+assign a;
+Select a such that Modifies(a, "num1") pattern a (_, _"num1"_)
+6
+5000
+21 - Combination(6) // select assgin stmt that modifies num1 and contains sub expression "num1 +"
+assign a;
+Select a such that Modifies(a, "num1") pattern a (_, _"num1 +"_)
+none
+5000
+22 - Combination(7) // select stmt that is after stmt 5 and contains sub expression "1"
+stmt s;
+Select s such that Next*(5, s) pattern s (_, _"1"_)
+7
+5000
+23 - Combination(8) // select stmt that is after stmt 5 and contains sub expression "1"
+stmt s;
+Select s such that Next(3, s) pattern s (_, _"1"_)
+4
+5000
+24 - Combination(9) // select the assgin stmt that is under any while loop and contains sub expression "num2"
+assign a; while w;
+Select a such that Parent*(w, a) pattern a (_, _"num2"_)
+4, 6
+5000
+25 - Combination(10) // select the assgin stmt that is under stmt 1 and contains sub expression "num2"
+stmt s;
+Select s such that Next(1, s) pattern s (_, _"num2"_)
+none
+5000

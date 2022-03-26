@@ -1,0 +1,15 @@
+procedure third {
+    read z;
+    v = z * z; 
+    w = 5;
+
+    while (v > 1) {
+        v = z + 1;
+    }
+    if (z > 0) then {
+        z = z + 1; 
+    } else {
+        z = v + w * 2; 
+    }
+    print v; 
+}
