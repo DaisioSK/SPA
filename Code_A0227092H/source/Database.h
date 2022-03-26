@@ -51,6 +51,7 @@ struct queryCmd {
 	vector<queryTable> tables;
 	vector<tblConnector> connects;
 	vector<queryCond> conditions;
+	string recursivePrefix;
 };
 
 struct tableEdge {
@@ -105,7 +106,7 @@ public:
 	static void insertUseReln(int stmt__id, int instance__id);
 
 	//method to insert a call relationship
-	static void insertCallReln(int caller__id, int callee__id);
+	static void insertCallReln(int caller__id, string callee);
 
 	//method to insert a next relationship
 	static void insertNextReln(int cur_stmt__id, int next_stmt__id);
@@ -115,6 +116,9 @@ public:
 	*/
 	// method to get all the procedures from the database
 	static void getProcedures(vector<string>& results);
+
+	// method to get procedure from the database by name
+	static void getProcedures(vector<string>& results, string name);
 
 	//method to get the latest insert id
 	static void getNewID(string tblName, int& newID);
@@ -160,6 +164,7 @@ public:
 	*/
 	static void appendEntityTable(string type, string alias, queryCmd& queryCmd);
 	static queryTable findTable(string type, string key, queryCmd const queryCmd);
+	static int findTableNum(queryCmd const queryCmd);
 
 
 	//find pattern string from stmt
