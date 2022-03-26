@@ -185,11 +185,27 @@ void Database::insertModifyReln(int stmt__id, int instance__id, string expressio
 	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
 }
 
+void Database::insertPcdModifyReln(int pcd__id, int instance__id, string expression) {
+	string sql = "INSERT INTO reln_modify_pcd (pcd__id, instance__id, expr) VALUES (";
+	sql.append("'" + to_string(pcd__id) + "', ");
+	sql.append("'" + to_string(instance__id) + "', ");
+	sql.append("'" + expression + "');");
+
+	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
+}
 
 //method to insert a parent relationship
 void Database::insertUseReln(int stmt__id, int instance__id) {
 	string sql = "INSERT INTO reln_use (stmt__id, instance__id) VALUES (";
 	sql.append("'" + to_string(stmt__id) + "', ");
+	sql.append("'" + to_string(instance__id) + "');");
+
+	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
+}
+
+void Database::insertPcdUseReln(int pcd__id, int instance__id) {
+	string sql = "INSERT INTO reln_use_pcd (pcd__id, instance__id) VALUES (";
+	sql.append("'" + to_string(pcd__id) + "', ");
 	sql.append("'" + to_string(instance__id) + "');");
 
 	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
@@ -547,8 +563,17 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 			queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".line_sno",itemLeft,0 });
 		}
 		else {
-			// Uses(x, y) x can be stmt alias/ pcd alias/ pcd name value
-			leftTable = findTable("alias", itemLeft, queryCmd); // can be stmt/ procedure tbl
+			vector<string> results;
+			getProcedures(results, itemLeft);
+			if (!results.empty()) {
+				//pcd name
+				leftTable = { "pcd", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(leftTable);
+				queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".name",itemLeft,0 });
+			}
+			else {
+				leftTable = findTable("alias", itemLeft, queryCmd); //pcd or stmt table
+			}
 		}
 
 		//right side: instance (name / alias)
@@ -584,14 +609,28 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 	else if (relnType == "modifies") {
 		
 		//left side: stmt (line no / alias)
-		queryTable stmtTable;
+		queryTable leftTable;
+		string colLeft;
 		if (is_number(itemLeft)) {
-			stmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
-			queryCmd.tables.push_back(stmtTable);
-			queryCmd.conditions.push_back({ "AND",stmtTable.tblAlias + ".line_sno",itemLeft,0 });
+			leftTable = { "stmt", "t" + to_string(++tmpSize), "" };
+			colLeft = "stmt__id";
+			queryCmd.tables.push_back(leftTable);
+			queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".line_sno",itemLeft,0 });
 		}
 		else {
-			stmtTable = findTable("alias", itemLeft, queryCmd);
+			vector<string> results;
+			getProcedures(results, itemLeft);
+			if (!results.empty()) {
+				//pcd name
+				leftTable = { "pcd", "t" + to_string(++tmpSize), "" };
+				colLeft = "pcd__id";
+				queryCmd.tables.push_back(leftTable);
+				queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".name",itemLeft,0 });
+			}
+			else {
+				leftTable = findTable("alias", itemLeft, queryCmd); //pcd or stmt table
+				colLeft = leftTable.tblName == "pcd" ? "pcd__id" : "stmt__id";
+			}
 		}
 
 		//right side: instance (name / alias)
@@ -608,10 +647,9 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		//modify relations
 		queryTable modifyTable = queryTable{ "reln_modify", "t" + to_string(++tmpSize), "" };
 		queryCmd.tables.push_back(modifyTable);
-		queryCmd.connects.push_back(tblConnector{ stmtTable.tblAlias, "_id", modifyTable.tblAlias, "stmt__id" });
+		queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", modifyTable.tblAlias, colLeft });
 		queryCmd.connects.push_back(tblConnector{ modifyTable.tblAlias, "instance__id", instanceTable.tblAlias, "_id" });
 
-		//iteration 3: left can be procedures
 	}
 
 	else if (relnType == "calls") {

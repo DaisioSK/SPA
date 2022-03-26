@@ -42,7 +42,7 @@ static vector<string> splitByOperators(string str) {
 		char c = str[i];
 		if (c == ' ') continue;
 
-		if (c == '=' || c == '+' || c == '-'|| c == '*' || c == '/' || c == '(' || c == ')')
+		if (c == '=' || c == '>' || c == '<' || c == '+' || c == '-'|| c == '*' || c == '/' || c == '(' || c == ')')
 		{
 			if (i > index) result.push_back(str.substr(index, i - index));
 			result.push_back(string(1, c));
@@ -167,7 +167,7 @@ void SourceProcessor::process(string program) {
 		else if (regex_match(line, expr_read)) {
 			tokens = split(clean_line, "read", false); // {"var_name"};
 
-			readStmtHandler(tokens[0], pcdID, line_no, newID);
+			readStmtHandler(tokens[0], brackets, pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a read statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
 
@@ -183,7 +183,7 @@ void SourceProcessor::process(string program) {
 		else if (regex_match(line, expr_print)) {
 			tokens = split(clean_line, "print", false); // {"var_name"};
 
-			printStmtHandler(tokens[0], pcdID, line_no, newID);
+			printStmtHandler(tokens[0], brackets, pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a print statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
 
@@ -202,7 +202,7 @@ void SourceProcessor::process(string program) {
 			tokens.pop_back();
 			tokens.insert(tokens.end(), rhs_tokens.begin(), rhs_tokens.end());
 
-			assignStmtHandler(tokens, pcdID, line_no, newID);
+			assignStmtHandler(tokens, brackets, pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a assign statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
 
@@ -216,9 +216,11 @@ void SourceProcessor::process(string program) {
 
 		// while statement
 		else if (regex_match(line, expr_while)) {
-			tokens = split(clean_line, "while", false);
+			//tokens = split(clean_line, "while", false);
 
-			whileStmtHandler(tokens[0], pcdID, line_no, newID);
+			tokens = splitByOperators(clean_line);
+
+			whileStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a while statement: " << line << ", id is " << newID << endl;
 
 			brackets.push_back(bracketInfo{ "while", newID });
@@ -235,7 +237,7 @@ void SourceProcessor::process(string program) {
 		else if (regex_match(line, expr_if)) {
 			tokens = split(clean_line, "if", false);
 
-			ifStmtHandler(tokens[0], pcdID, line_no, newID);
+			ifStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a if statement: " << line << ", id is " << newID << endl;
 
 			brackets.push_back(bracketInfo{ "if", newID });
@@ -320,7 +322,7 @@ void SourceProcessor::process(string program) {
 
 }
 
-void SourceProcessor::printStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
+void SourceProcessor::printStmtHandler(string instName, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
 	int oldID = newID;
@@ -331,6 +333,15 @@ void SourceProcessor::printStmtHandler(string instName, int pcdID, int& line_no,
 
 	//add use reln record
 	Database::insertUseReln(newID, instID);
+	if (!brackets.empty()) {
+		for (bracketInfo b : brackets) {
+			if (b.type == "while" || b.type == "if")
+				Database::insertUseReln(b.db_id, instID);
+			else if (b.type == "pcd") {
+				Database::insertPcdUseReln(b.db_id, instID);
+			}
+		}
+	}
 
 	//insert next reln record
 	if(oldID>0) Database::insertNextReln(oldID, newID);
@@ -338,7 +349,7 @@ void SourceProcessor::printStmtHandler(string instName, int pcdID, int& line_no,
 	line_no++;
 }
 
-void SourceProcessor::readStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
+void SourceProcessor::readStmtHandler(string instName, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
 	int oldID = newID;
@@ -349,6 +360,15 @@ void SourceProcessor::readStmtHandler(string instName, int pcdID, int& line_no, 
 
 	//add use reln record
 	Database::insertModifyReln(newID, instID, "");
+	if (!brackets.empty()) {
+		for (bracketInfo b : brackets) {
+			if (b.type == "while" || b.type == "if")
+				Database::insertModifyReln(b.db_id, instID, "");
+			else if (b.type == "pcd") {
+				Database::insertPcdModifyReln(b.db_id, instID, "");
+			}
+		}
+	}
 
 	//insert next reln record
 	if (oldID > 0) Database::insertNextReln(oldID, newID);
@@ -356,7 +376,7 @@ void SourceProcessor::readStmtHandler(string instName, int pcdID, int& line_no, 
 	line_no++;
 }
 
-void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& line_no, int& newID) {
+void SourceProcessor::assignStmtHandler(vector<string> tokens, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID) {
 	
 	std::regex expr_inst("\[a-zA-z0-9\]\*\$");
 	std::regex expr_var("\[a-zA-z\]\[a-zA-z0-9\]\*\$");
@@ -382,6 +402,7 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 			continue;
 		}
 
+		//variable
 		if (regex_match(currentToken, expr_inst)) {
 			if (metEqualSign) {
 				expression.append(currentToken);
@@ -390,6 +411,15 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 					//current token is variable
 					instID = getInstID(currentToken, pcdID, "variable");	
 					Database::insertUseReln(newID, instID);
+					if (!brackets.empty()) {
+						for (bracketInfo b : brackets) {
+							if (b.type == "while" || b.type == "if")
+								Database::insertUseReln(b.db_id, instID);
+							else if (b.type == "pcd") {
+								Database::insertPcdUseReln(b.db_id, instID);
+							}
+						}
+					}
 				}
 				else {
 					//current token is constant
@@ -406,6 +436,8 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 				}
 			}
 		}
+
+		//constant
 		else {
 			if (metEqualSign)
 			{
@@ -414,15 +446,25 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 			else {
 				if (regex_match(currentToken, expr_var))
 				{
-					modInstID = getInstID(currentToken, pcdID, "variable");
+					getInstID(currentToken, pcdID, "variable");
 				}
 				else {
-					modInstID = getInstID(currentToken, pcdID, "constant");
+					getInstID(currentToken, pcdID, "constant");
 				}
 			}
 		}
 	}
+
 	Database::insertModifyReln(newID, modInstID, expression);
+	if (!brackets.empty()) {
+		for (bracketInfo b : brackets) {
+			if (b.type == "while" || b.type == "if")
+				Database::insertModifyReln(b.db_id, modInstID, expression);
+			else if (b.type == "pcd") {
+				Database::insertPcdModifyReln(b.db_id, modInstID, expression);
+			}
+		}
+	}
 
 	//insert next reln record
 	if (oldID > 0) Database::insertNextReln(oldID, newID);
@@ -439,22 +481,38 @@ void SourceProcessor::callStmtHandler(string instName, int pcdID, int& line_no, 
 	line_no++;
 }
 
-void SourceProcessor::whileStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
+void SourceProcessor::whileStmtHandler(vector<string> tokens, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
 	int oldID = newID;
 	Database::insertStatement("while", line_no, line_no, pcdID, newID);
+
+	//read condition and insert use reln
+	std::regex expr_var("\[a-zA-z\]\[a-zA-z0-9\]\*\$");
+	for (string token : tokens) {
+		if (regex_match(token, expr_var) && token != "while") {
+			Database::insertUseReln(newID, getInstID(token, pcdID, "variable"));
+		}
+	}
 
 	//insert next reln record
 	if (oldID > 0) Database::insertNextReln(oldID, newID);
 	line_no++;
 }
 
-void SourceProcessor::ifStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
+void SourceProcessor::ifStmtHandler(vector<string> tokens, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
 	int oldID = newID;
 	Database::insertStatement("if", line_no, line_no, pcdID, newID);
+
+	//read condition and insert use reln
+	std::regex expr_var("\[a-zA-z\]\[a-zA-z0-9\]\*\$");
+	for (string token : tokens) {
+		if (regex_match(token, expr_var) && token != "if") {
+			Database::insertUseReln(newID, getInstID(token, pcdID, "variable"));
+		}
+	}
 
 	//insert next reln record
 	if (oldID > 0) Database::insertNextReln(oldID, newID);
@@ -465,11 +523,17 @@ void SourceProcessor::ifStmtHandler(string instName, int pcdID, int& line_no, in
 void SourceProcessor::parentRelnHander(vector<bracketInfo> brackets, int newID) {
 	if (!brackets.empty())
 	{
-		bracketInfo currentBracket = brackets.back();
-		if (currentBracket.type == "while" || currentBracket.type == "if")
-		{
-			Database::insertParentReln(currentBracket.db_id, newID);
+		for (bracketInfo currentBracket : brackets) {
+			if (currentBracket.type == "while" || currentBracket.type == "if")
+			{
+				Database::insertParentReln(currentBracket.db_id, newID);
+			}
 		}
+		//bracketInfo currentBracket = brackets.back();
+		//if (currentBracket.type == "while" || currentBracket.type == "if")
+		//{
+		//	Database::insertParentReln(currentBracket.db_id, newID);
+		//}
 	}
 }
 
