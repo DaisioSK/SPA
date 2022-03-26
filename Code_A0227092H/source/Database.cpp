@@ -495,8 +495,8 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				rightStmtTable = findTable("alias", itemRight, queryCmd);
 			}
 			queryCmd.selections.push_back({ rightStmtTable.tblAlias, "_id" });
-
-  }
+		}
+	}
 	else if (relnType == "parent") {
 
 		//left side: stmt (line no / alias)
@@ -554,9 +554,9 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		//right side: instance (name / alias)
 		queryTable rightTable;
 		if (itemRight.find("\"") != string::npos) {
-			instanceTable = { "instance","t" + to_string(++tmpSize), "" };
-			queryCmd.tables.push_back(instanceTable);
-			queryCmd.conditions.push_back({ "AND",instanceTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
+			rightTable = { "instance","t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(rightTable);
+			queryCmd.conditions.push_back({ "AND",rightTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
 		}
 		else {
 			// Uses(x, y), y can be inst alias
