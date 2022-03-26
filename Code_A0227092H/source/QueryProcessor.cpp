@@ -64,6 +64,24 @@ static void lowercase(string& str) {
 	});
 }
 
+static string trim(string s, char c) {
+	if (!s.empty())
+	{
+		if (c == NULL)
+		{
+			s.erase(remove(s.begin(), s.end(), ' '), s.end());
+			s.erase(remove(s.begin(), s.end(), ';'), s.end());
+			s.erase(remove(s.begin(), s.end(), '\t'), s.end());
+		}
+		else {
+			s.erase(remove(s.begin(), s.end(), c), s.end());
+		}
+	}
+
+	return s;
+}
+
+
 // method to evaluate a query
 // This method currently only handles queries for getting all the procedure names,
 // using some highly simplified logic.
@@ -161,8 +179,10 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 
 	// post process the results to fill in the output vector
 	for (vector<string> row : databaseResults) {
-		
-		//check patterns
+
+		string attr;
+    
+    //check patterns
 		if (!patterns.empty()) {
 			Node attr_node;
 			for (queryPattern p : patterns) {
@@ -192,10 +212,13 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 				row.erase(row.begin() + n.prevStmtIndex);
 			}
 		}
+    
 
-		for (string attr : row) {
-			output.push_back(attr);
+		for (string s : row) {
+			attr += s + " ";
 		}
+		output.push_back(attr.substr(0, attr.size() -1));
+
 		nxt:;
 	}
 
