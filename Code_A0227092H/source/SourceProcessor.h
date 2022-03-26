@@ -31,5 +31,9 @@ public:
 
 	static void parentRelnHander(vector<bracketInfo> brackets, int newID);
 
+	static void callStmtHandler(string instName, int pcdID, int& line_no, int& newID);
+
 	static int getInstID(string name, int pcdID, string type);
+
+	static void lowercase(string& str);
 };
