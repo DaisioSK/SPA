@@ -4,8 +4,6 @@
 #include "iostream"
 
 
-
-
 // constructor
 QueryProcessor::QueryProcessor() {}
 
@@ -28,6 +26,7 @@ static vector<string> split(string str, string token) {
 	}
 	return result;
 }
+
 
 static vector<string> split_multi(string str, vector<string> tokens) {
 	vector<string>result;
@@ -96,6 +95,7 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 	string clean_query;
 	queryCmd queryCmd{};
 	vector<queryPattern> patterns;
+	vector<queryNextCond> nextConds;
 
 	//assign a1, a2; while w1, w2;
 	//Select a1 pattern a1("x", _) pattern a2("x", _"x"_) such that Next* (a1, a2)
@@ -107,8 +107,8 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 	for (string query : queries) {
 
 		//init
-		if (query == "") continue;
 		lowercase(query);
+		if (query == "") continue;
 		//TODO: x and X cannnot be differentiated. fix it later
 
 		clean_query = split(query, ";").at(0);
@@ -145,7 +145,7 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 					Database::selectHandler(parts[i + 1], queryCmd);
 				}
 				else if (parts[i] == "cond") {
-					Database::suchThatHandler(parts[i + 1], queryCmd);
+					Database::suchThatHandler(parts[i + 1], queryCmd, nextConds);
 				}
 				else if (parts[i] == "pattern") {
 					Database::patternHandler(parts[i + 1], queryCmd, patterns);
@@ -179,7 +179,10 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 
 	// post process the results to fill in the output vector
 	for (vector<string> row : databaseResults) {
+
 		string attr;
+    
+    //check patterns
 		if (!patterns.empty()) {
 			Node attr_node;
 			for (queryPattern p : patterns) {
@@ -187,7 +190,6 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 				if (stmt_pattern=="") goto nxt;
 
 				ExprTree::exprStrToNode(stmt_pattern, attr_node);
-				//bool is_pattern_matched = ExprTree::HasSubtree(&attr_node, &p.patternNode);
 				bool has_subtree = ExprTree::HasSubtree(&attr_node, &p.patternNode);
 				bool is_left_matched = p.openLeft || ExprTree::testLeft(&attr_node, &p.patternNode);
 				bool is_right_matched = p.openRight || ExprTree::testRight(&attr_node, &p.patternNode);
@@ -197,6 +199,20 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 				row.erase(row.begin() + p.attrIndex);
 			}
 		}
+
+		//check next relations
+		if (!nextConds.empty()) {
+			for (queryNextCond n : nextConds) {
+				int prevStmtID = stoi(row.at(n.prevStmtIndex));
+				int nextStmtID = stoi(row.at(n.nextStmtIndex));
+				bool hasNext = Database::findNextReln(prevStmtID, nextStmtID);
+
+				if (!hasNext) goto nxt;
+				row.erase(row.begin() + n.nextStmtIndex);
+				row.erase(row.begin() + n.prevStmtIndex);
+			}
+		}
+    
 
 		for (string s : row) {
 			attr += s + " ";

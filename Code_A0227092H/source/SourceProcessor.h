@@ -36,4 +36,5 @@ public:
 	static int getInstID(string name, int pcdID, string type);
 
 	static void lowercase(string& str);
+
 };

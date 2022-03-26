@@ -23,6 +23,15 @@ static vector<string> split(string str, string token, bool keep) {
 	return result;
 }
 
+
+// static std::string trim(std::string s) {
+// 	s = std::regex_replace(s, std::regex("^\\s+"), std::string(""));
+// 	s = std::regex_replace(s, std::regex("\\s+$"), std::string(""));
+// 	return s;
+// }
+ 
+
+
 static vector<string> splitByOperators(string str) {
 	vector<string>result;
 	int index = 0;
@@ -124,14 +133,16 @@ void SourceProcessor::process(string program) {
 	vector<string> lines = split(program, "\n", false);
 	vector<string> tokens;
 	vector<bracketInfo> brackets;
+	vector<int> ifBranchEndIDs;
 	string clean_line;
 	int line_no = 1;
 	int newID = 0;
 	int pcdID = 0;
+	bool flagIfEnd = 0;
 
 	for (auto& line : lines) {
 		//cout << line << endl;
-
+  
 		if (line == "") continue;
 
 		//init
@@ -148,6 +159,7 @@ void SourceProcessor::process(string program) {
 			pcdID = newID;
 			cout << "find a procedure here: " << line << ", id is " << newID << endl;
 
+
 			brackets.push_back({ "pcd", pcdID });
 		}
 
@@ -158,6 +170,13 @@ void SourceProcessor::process(string program) {
 			readStmtHandler(tokens[0], pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a read statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
+
+			//insert next reln for 1st stmt after an "if" stmt
+			if (flagIfEnd && ifBranchEndIDs.size()) {
+				Database::insertNextReln(ifBranchEndIDs.back(), newID);
+				ifBranchEndIDs.pop_back();
+				flagIfEnd = 0;
+			}
 		}
 
 		//print statement
@@ -167,6 +186,13 @@ void SourceProcessor::process(string program) {
 			printStmtHandler(tokens[0], pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a print statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
+
+			//insert next reln for 1st stmt after an "if" stmt
+			if (flagIfEnd && ifBranchEndIDs.size()) {
+				Database::insertNextReln(ifBranchEndIDs.back(), newID);
+				ifBranchEndIDs.pop_back();
+				flagIfEnd = 0;
+			}
 		}
 
 		//assign statement
@@ -179,6 +205,13 @@ void SourceProcessor::process(string program) {
 			assignStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a assign statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
+
+			//insert next reln for 1st stmt after an "if" stmt
+			if (flagIfEnd && ifBranchEndIDs.size()) {
+				Database::insertNextReln(ifBranchEndIDs.back(), newID);
+				ifBranchEndIDs.pop_back();
+				flagIfEnd = 0;
+			}
 		}
 
 		// while statement
@@ -189,6 +222,13 @@ void SourceProcessor::process(string program) {
 			cout << "line " << line_no -1  << " is a while statement: " << line << ", id is " << newID << endl;
 
 			brackets.push_back(bracketInfo{ "while", newID });
+
+			//insert next reln for 1st stmt after an "if" stmt
+			if (flagIfEnd && ifBranchEndIDs.size()) {
+				Database::insertNextReln(ifBranchEndIDs.back(), newID);
+				ifBranchEndIDs.pop_back();
+				flagIfEnd = 0;
+			}
 		}
 
 		// if statement
@@ -199,6 +239,13 @@ void SourceProcessor::process(string program) {
 			cout << "line " << line_no - 1 << " is a if statement: " << line << ", id is " << newID << endl;
 
 			brackets.push_back(bracketInfo{ "if", newID });
+
+			//insert next reln for 1st stmt after an "if" stmt
+			if (flagIfEnd && ifBranchEndIDs.size()) {
+				Database::insertNextReln(ifBranchEndIDs.back(), newID);
+				ifBranchEndIDs.pop_back();
+				flagIfEnd = 0;
+			}
 		}
 
 		// else statement
@@ -208,6 +255,13 @@ void SourceProcessor::process(string program) {
 			cout << "line " << line_no - 1 << " is a else statement: " << line << ", id is " << newID << endl;
 
 			//brackets.push_back(bracketInfo{ "else", newID });
+
+			ifBranchEndIDs.push_back(newID);
+
+			//repalce the last stmt to the if stmt
+			bracketInfo currentBracket = brackets.back();
+			newID = currentBracket.db_id;
+
 		}
 
 		// call statement
@@ -231,10 +285,12 @@ void SourceProcessor::process(string program) {
 				else if (currentBracket.type == "while") 
 				{
 					Database::updateStmt(currentBracket.db_id, line_no);
+					Database::insertNextReln(newID, currentBracket.db_id);
 				}
 				else if (currentBracket.type == "if") 
 				{
 					Database::updateStmt(currentBracket.db_id, line_no);
+					flagIfEnd = 1;
 				}
 
 				brackets.pop_back();
@@ -267,7 +323,7 @@ void SourceProcessor::process(string program) {
 void SourceProcessor::printStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
-	//int stmtID = 0;
+	int oldID = newID;
 	Database::insertStatement("print", line_no, line_no, pcdID, newID);
 
 	//get variable id being print
@@ -275,13 +331,17 @@ void SourceProcessor::printStmtHandler(string instName, int pcdID, int& line_no,
 
 	//add use reln record
 	Database::insertUseReln(newID, instID);
+
+	//insert next reln record
+	if(oldID>0) Database::insertNextReln(oldID, newID);
+
 	line_no++;
 }
 
 void SourceProcessor::readStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
-	//int stmtID = 0;
+	int oldID = newID;
 	Database::insertStatement("read", line_no, line_no, pcdID, newID);
 
 	//get variable id being print
@@ -289,6 +349,10 @@ void SourceProcessor::readStmtHandler(string instName, int pcdID, int& line_no, 
 
 	//add use reln record
 	Database::insertModifyReln(newID, instID, "");
+
+	//insert next reln record
+	if (oldID > 0) Database::insertNextReln(oldID, newID);
+
 	line_no++;
 }
 
@@ -303,7 +367,7 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 	string expression = "";
 
 	//insert statement and get id
-	int stmtID = 0;
+	int oldID = newID;
 	Database::insertStatement("assign", line_no, line_no, pcdID, newID);
 	
 	for (int i = 0; i < tokens.size(); i++) {
@@ -360,6 +424,9 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 	}
 	Database::insertModifyReln(newID, modInstID, expression);
 
+	//insert next reln record
+	if (oldID > 0) Database::insertNextReln(oldID, newID);
+
 	line_no++;
 }
 
@@ -375,14 +442,23 @@ void SourceProcessor::callStmtHandler(string instName, int pcdID, int& line_no, 
 void SourceProcessor::whileStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
+	int oldID = newID;
 	Database::insertStatement("while", line_no, line_no, pcdID, newID);
+
+	//insert next reln record
+	if (oldID > 0) Database::insertNextReln(oldID, newID);
 	line_no++;
 }
 
 void SourceProcessor::ifStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
 
 	//insert statement and get id
+	int oldID = newID;
 	Database::insertStatement("if", line_no, line_no, pcdID, newID);
+
+	//insert next reln record
+	if (oldID > 0) Database::insertNextReln(oldID, newID);
+
 	line_no++;
 }
 

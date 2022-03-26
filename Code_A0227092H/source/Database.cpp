@@ -14,11 +14,11 @@ void Database::getNewID(string tblName, int& newID) {
 	// clear the existing results
 	dbResults.clear();
 	
-	//results are loaded to ‘dbResults'
+	//results are loaded to â€˜dbResults'
 	string sql = "SELECT _id FROM "+tblName+" ORDER BY _id DESC LIMIT 1;";
 	sqlite3_exec(dbConnection, sql.c_str(), callback, 0, &errorMessage);
 
-	//get the id from ‘dbResults'
+	//get the id from â€˜dbResults'
 	newID = 0;
 	for (vector<string> dbRow : dbResults) {
 		newID = stoi(dbRow.at(0));
@@ -218,6 +218,14 @@ void Database::insertCallReln(int caller__id, string callee) {
 	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
 }
 
+void Database::insertNextReln(int cur_stmt__id, int next_stmt__id) {
+	string sql = "INSERT INTO reln_next (stmt__id, next_stmt__id) VALUES (";
+	sql.append("'" + to_string(cur_stmt__id) + "', ");
+	sql.append("'" + to_string(next_stmt__id) + "');");
+
+	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
+}
+
 
 //void Database::buildQueryItem(string objType, string alias, queryItem& queryItem) {
 //	queryItem.alias = alias;
@@ -360,7 +368,7 @@ void Database::selectHandler(string str, queryCmd& queryCmd){
 //}
 
 
-void Database::suchThatHandler(string str, queryCmd& queryCmd){
+void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextCond>& nextConds){
 	str; //"follows* (2, s)"
 	queryCmd;
 
@@ -378,33 +386,9 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 		//right = stmt (line no / alias)
 
 		/*
-		* follows* (3, s)
-		select stmt.line_sno
-		from stmt
-		where stmt.line_sno > 3 and stmt.pcd__id = (select pcd__id from stmt where line_sno = 2)
-		and not exist
-		(	
-			select *
-			from reln_parent 
-			where child__id = stmt._id and parent__id not in (select parent__id from reln_parent where child__id = 2)
-		);
-
-
-		from stmt t1, stmt t2
-		where t1.pcd__id = t2.pcd__id AND t1.line_sno > t2.line_sno
-		AND NOT EXIST
-		(
-			select parent__id from reln_parent
-			where child__id in (t1._id, t2._id)
-			group_by parent__id 
-			having count(distinct child__id) = 1;
-		)
-
-
 		1. same pcd__id
 		2. right appear after left
-		3. parents must be the same (null-null),(8,14-8,14), not exist A is left' parent, but not right's parent. 
-
+		3. parents must be the same (null-null),(8,14-8,14), not exist A is left' parent, but not right's parent.
 		*/
 
 		string lineLeft, lineRight, pcdLeft, pcdRight, idLeft, idRight;
@@ -427,7 +411,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 			//lineno
 			lineRight = itemRight;
 			pcdRight = "(SELECT pcd__id from stmt where line_sno = " + itemRight + ")";
-			idRight= "(SELECT _id from stmt where line_sno = " + itemRight + ")";
+			idRight = "(SELECT _id from stmt where line_sno = " + itemRight + ")";
 		}
 		else {
 			//alias
@@ -438,12 +422,11 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 		}
 
 		//TODO: they have to be under same parent as well. parent must be shared by both sides
-
 		string condLine = is_recursive_reln ? lineLeft + " < " + lineRight : lineLeft + "+1 = " + lineRight;
 		string condition = " AND " + condLine + " AND " + pcdLeft + " = " + pcdRight;
 		condition += "\nAND NOT EXISTS (\n\
 			SELECT parent__id FROM reln_parent\n\
-			WHERE child__id = "+ idLeft +" OR child__id = "+idRight+"\n\
+			WHERE child__id = " + idLeft + " OR child__id = " + idRight + "\n\
 			GROUP BY parent__id HAVING COUNT(DISTINCT child__id) = 1\n\
 		)\n";
 		queryCmd.conditions.push_back({ "","",condition ,1 });
@@ -451,67 +434,70 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 	}
 
 	else if (relnType == "next") {
-		//left = stmt (line no / alias)
-		//right = stmt (line no / alias)
 
-		/*
-		* next* (3, s)
-		select stmt.line_sno
-		from stmt
-		where stmt.line_sno > 3 and stmt.pcd__id = (select pcd__id from stmt where line_sno = 2)
-		and not exist
-		(
-			select *
-			from reln_parent
-			where child__id = stmt._id and parent__id not in (select parent__id from reln_parent where child__id = 2)
-		);
+		if (!is_recursive_reln) {
 
+			//left side: stmt (line no / alias)
+			queryTable leftStmtTable;
+			if (is_number(itemLeft)) {
+				leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(leftStmtTable);
+				queryCmd.conditions.push_back({ "AND",leftStmtTable.tblAlias + ".line_sno",itemLeft,0 });
+			}
+			else {
+				leftStmtTable = findTable("alias", itemLeft, queryCmd);
+			}
 
-		from stmt t1, stmt t2
-		where t1.pcd__id = t2.pcd__id AND t1.line_sno > t2.line_sno
-		AND NOT EXIST
-		(
-			select parent__id from reln_parent
-			where child__id in (t1._id, t2._id)
-			group_by parent__id
-			having count(distinct child__id) = 1;
-		)
+			//right side: stmt (line no / alias)
+			queryTable rightStmtTable;
+			if (is_number(itemRight)) {
+				rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(rightStmtTable);
+				queryCmd.conditions.push_back({ "AND",rightStmtTable.tblAlias + ".line_sno",itemRight,0 });
+			}
+			else {
+				rightStmtTable = findTable("alias", itemRight, queryCmd);
+			}
 
+			//modify relations
+			queryTable nextTable = queryTable{ "reln_next", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(nextTable);
+			queryCmd.connects.push_back(tblConnector{ leftStmtTable.tblAlias, "_id", nextTable.tblAlias, "stmt__id" });
+			queryCmd.connects.push_back(tblConnector{ nextTable.tblAlias, "next_stmt__id", rightStmtTable.tblAlias, "_id" });
 
-		1. same pcd__id
-		2. while and its children
+		}
+		else {
 
-		*/
-	}
-	
+			//indicate the index of attr to be accessed
+			int beginIndex = queryCmd.selections.size();
+			nextConds.push_back({ beginIndex, beginIndex + 1 });
+
+			//left side: stmt (line no / alias)
+			queryTable leftStmtTable;
+			if (is_number(itemLeft)) {
+				leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(leftStmtTable);
+				queryCmd.conditions.push_back({ "AND",leftStmtTable.tblAlias + ".line_sno",itemLeft,0 });
+			}
+			else {
+				leftStmtTable = findTable("alias", itemLeft, queryCmd);
+			}
+			queryCmd.selections.push_back({ leftStmtTable.tblAlias, "_id" });
+
+			//right side: stmt (line no / alias)
+			queryTable rightStmtTable;
+			if (is_number(itemRight)) {
+				rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(rightStmtTable);
+				queryCmd.conditions.push_back({ "AND",rightStmtTable.tblAlias + ".line_sno",itemRight,0 });
+			}
+			else {
+				rightStmtTable = findTable("alias", itemRight, queryCmd);
+			}
+			queryCmd.selections.push_back({ rightStmtTable.tblAlias, "_id" });
+
+  }
 	else if (relnType == "parent") {
-		//left = stmt (line no / alias)
-		//right = stmt (line no / alias)
-
-		/*
-		* parent* (2, s)
-		
-		* parent* (s, 2)
-
-		from stmt a, stmt b, reln_parent
-		where reln_parent.parent__id = a._id and reln_parent.child__id = b._id
-		
-		parent* (a,b)
-		select ...
-		from stmt a, stmt b, reln_parent
-		where reln_parent.parent__id = a._id and reln_parent.child__id = b._id
-
-		parent (a,b)
-		select ...
-		from stmt a, stmt b, reln_parent
-		where reln_parent.parent__id = a._id and reln_parent.child__id = b._id
-		and not exist (
-			select * from reln_parent where parent__id = a
-			and child__id in (select parent__id from reln_parent where child__id = b._id)
-		)
-		*/
-
-		//queryCmd.tables.push_back({table, how_to_join, (alias)});
 
 		//left side: stmt (line no / alias)
 		queryTable leftStmtTable;
@@ -552,13 +538,6 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 
 	else if (relnType == "uses") {
 
-		int tmpSize = findTableNum(queryCmd);
-
-		/*
-		Uses(stmt, variable) ==> stmt <+> reln_use <+> instance
-		Uses(pcd, variable) ==> pcd <+> instance <+> reln_use
-		*/
-
 		//left side: stmt (line no / alias)
 		queryTable leftTable;
 		if (is_number(itemLeft)) {
@@ -575,10 +554,9 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 		//right side: instance (name / alias)
 		queryTable rightTable;
 		if (itemRight.find("\"") != string::npos) {
-			//Uses(x, y), y can be inst name value
-			rightTable = { "instance","t" + to_string(++tmpSize), "" };
-			queryCmd.tables.push_back(rightTable);
-			queryCmd.conditions.push_back({ "AND",rightTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
+			instanceTable = { "instance","t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(instanceTable);
+			queryCmd.conditions.push_back({ "AND",instanceTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
 		}
 		else {
 			// Uses(x, y), y can be inst alias
@@ -604,17 +582,6 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 	}
 
 	else if (relnType == "modifies") {
-
-		int tmpSize = 1;
-
-		//TODO: temp solution - to delete after updateing appendEntityTable method
-		for (int i = 0; i < queryCmd.conditions.size(); i++)
-		{
-			if (queryCmd.conditions.at(i).value == " AND t1.type = 'assign'")
-			{
-				queryCmd.conditions.at(i).value = " AND (t1.type = 'assign' OR t1.type = 'read')";
-			}
-		}
 		
 		//left side: stmt (line no / alias)
 		queryTable stmtTable;
@@ -842,7 +809,98 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 	}
 }
 
+//not sure why cannot define under header file. strange
+static vector<vector<int>> routes;
 
+void Database::initRoutes() {
+	//build the graph and store to routes
+	dbResults.clear();
+
+	int prevID, nextID;
+	int maxID = 0;
+
+	string sql = "SELECT stmt__id, next_stmt__id FROM reln_next;";
+	sqlite3_exec(dbConnection, sql.c_str(), callback, 0, &errorMessage);
+	for (vector<string> dbRow : dbResults) {
+		prevID = stoi(dbRow[0]);
+		if (prevID > maxID) maxID = prevID;
+
+		nextID = stoi(dbRow[1]);
+		if (nextID > maxID) maxID = nextID;
+
+		while (routes.size() <= maxID) {
+			routes.push_back({});
+		}
+		routes[prevID].push_back(nextID);
+	}
+}
+
+static bool isSubArray(vector<int> parent, vector<int> child)
+{
+	// Two pointers to traverse the arrays
+	int i = 0, j = 0;
+
+	// Traverse both arrays simultaneously
+	while (i < parent.size() && j < child.size()) {
+
+		// If element matches
+		// increment both pointers
+		if (parent[i] == child[j]) {
+
+			i++;
+			j++;
+
+			// If array B is completely
+			// traversed
+			if (j == child.size())
+				return true;
+		}
+		// If not,
+		// increment i and reset j
+		else {
+			i = i - j + 1;
+			j = 0;
+		}
+	}
+
+	return false;
+}
+
+
+bool Database::findNextReln(int prevID, int nextID) {
+	if (!routes.size()) initRoutes();
+	vector<int> queue;
+	vector<int> visited;
+	vector<int>::iterator ip;
+	
+	for (int stmtID : routes[prevID]) {
+		if (stmtID == nextID) return true;
+		else {
+			queue.push_back(stmtID);
+		}
+	}
+
+	int index = 0;
+	while (!isSubArray(visited, queue)) {
+		if (std::find(visited.begin(), visited.end(), queue[index]) == visited.end()) goto nxt;
+		for (int stmtID : routes[queue[index]]) {
+			if (stmtID == nextID) return true;
+			else {
+				queue.push_back(stmtID);
+			}
+		}
+
+		//unique the queue
+		ip = std::unique(queue.begin(), queue.end());
+		queue.resize(std::distance(queue.begin(), ip));
+
+		nxt:
+		visited.push_back(queue[index]);
+		index++;
+	}
+
+	return false;
+}
 
 string Database::getPatternString(string str) {
 	std::regex expr_pattern("_\?\"\[a-zA-z0-9\\s\+\-\\/\\*%\\(\\)\]\+\"_\?");
@@ -957,7 +1015,8 @@ void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryC
 
 	//build select clause
 	for (queryItem item : queryCmd.selections) {
-		queryStr += item.tableALias + "." + item.attrName + ", ";
+		if (item.tableALias != "") queryStr += item.tableALias + ".";
+		queryStr += item.attrName + ", ";
 	}
 	queryStr = regex_replace(queryStr, std::regex("\,\\s\$"), "");
 
