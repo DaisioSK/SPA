@@ -55,9 +55,23 @@ void Database::close() {
 
 // method to insert a procedure into the database
 void Database::insertProcedure(string name, int line_sno, int& newID) {
-	string insertProcedureSQL = "INSERT INTO pcd (name, line_sno) VALUES ('" + name + "', '" + to_string(line_sno) + "');";
-	sqlite3_exec(dbConnection, insertProcedureSQL.c_str(), NULL, 0, &errorMessage);
-	getNewID("pcd", newID);
+
+	vector<string> procedures;
+	getProcedures(procedures, name);
+
+	if (procedures.size() > 0)
+	{
+		string updateProcedureSQL = "UPDATE pcd SET line_sno = '" + to_string(line_sno) + "' WHERE name = '" + name + "';";
+		sqlite3_exec(dbConnection, updateProcedureSQL.c_str(), NULL, 0, &errorMessage);
+		newID = stoi(procedures[0]);
+	}
+	else {
+		string insertProcedureSQL = "INSERT INTO pcd (name, line_sno) VALUES ('" + name + "', '" + to_string(line_sno) + "');";
+		sqlite3_exec(dbConnection, insertProcedureSQL.c_str(), NULL, 0, &errorMessage);
+		getNewID("pcd", newID);
+	}
+
+	
 }
 
 // method to get all the procedures from the database
@@ -67,7 +81,25 @@ void Database::getProcedures(vector<string>& results){
 
 	// retrieve the procedures from the procedure table
 	// The callback method is only used when there are results to be returned.
-	string getProceduresSQL = "SELECT * FROM procedures;";
+	string getProceduresSQL = "SELECT * FROM pcd;";
+	sqlite3_exec(dbConnection, getProceduresSQL.c_str(), callback, 0, &errorMessage);
+
+	// postprocess the results from the database so that the output is just a vector of procedure names
+	for (vector<string> dbRow : dbResults) {
+		string result;
+		result = dbRow.at(0);
+		results.push_back(result);
+	}
+}
+
+// method to get procedure from the database by name
+void Database::getProcedures(vector<string>& results, string name) {
+	// clear the existing results
+	dbResults.clear();
+
+	// retrieve the procedures from the procedure table
+	// The callback method is only used when there are results to be returned.
+	string getProceduresSQL = "SELECT _id FROM pcd WHERE name = '" + name + "'";
 	sqlite3_exec(dbConnection, getProceduresSQL.c_str(), callback, 0, &errorMessage);
 
 	// postprocess the results from the database so that the output is just a vector of procedure names
@@ -128,9 +160,9 @@ void Database::getInstance(vector<string>& results, vector<queryCond> queryConds
 void Database::appendQueryCond(string& queryString, vector<queryCond> queryConds) {
 	for (queryCond q : queryConds) {
 		if (q.customText)
-			queryString.append(q.value + " ");
-		else 
-			queryString.append(q.joinType + " " + q.key + " = '" + q.value + "' ");
+			queryString.append(q.value + " \n");
+		else
+			queryString.append(q.joinType + " " + q.key + " = '" + q.value + "' \n");
 	}
 }
 
@@ -165,10 +197,23 @@ void Database::insertUseReln(int stmt__id, int instance__id) {
 
 
 //method to insert a call relationship
-void Database::insertCallReln(int caller__id, int callee__id) {
+void Database::insertCallReln(int caller__id, string callee) {
+
+	int callee_id = -1;
+	vector<string> procedures;
+	getProcedures(procedures, callee);
+
+	if (procedures.size() > 0)
+	{
+		callee_id = stoi(procedures[0]);
+	}
+	else {
+		insertProcedure(callee, NULL, callee_id);
+	}
+
 	string sql = "INSERT INTO reln_call (caller__id, callee__id) VALUES (";
 	sql.append("'" + to_string(caller__id) + "', ");
-	sql.append("'" + to_string(callee__id) + "');");
+	sql.append("'" + to_string(callee_id) + "');");
 
 	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
 }
@@ -199,6 +244,23 @@ void Database::insertCallReln(int caller__id, int callee__id) {
 static std::string trim(std::string s) {
 	s = std::regex_replace(s, std::regex("^\\s+"), std::string(""));
 	s = std::regex_replace(s, std::regex("\\s+$"), std::string(""));
+	return s;
+}
+
+static string trim(string s, char c) {
+	if (!s.empty())
+	{
+		if (c == NULL)
+		{
+			s.erase(remove(s.begin(), s.end(), ' '), s.end());
+			s.erase(remove(s.begin(), s.end(), ';'), s.end());
+			s.erase(remove(s.begin(), s.end(), '\t'), s.end());
+		}
+		else {
+			s.erase(remove(s.begin(), s.end(), c), s.end());
+		}
+	}
+
 	return s;
 }
 
@@ -272,7 +334,7 @@ static vector<string> split_multi(string str, vector<string> tokens) {
 
 void Database::selectHandler(string str, queryCmd& queryCmd){
 
-	//iteration 3: grouping select
+	//TODO - iteration 3: grouping select
 
 	vector<string> selections = split(str,",");
 	string attrName = "";
@@ -309,8 +371,9 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 	bool is_recursive_reln = relnType.find("*") != string::npos ? 1 : 0;
 	if(is_recursive_reln) relnType = relnType.substr(0, relnType.size() - 1);
 	lowercase(relnType);
+	int tmpSize = queryCmd.tables.size();
 
-	if (relnType == "follows" || relnType == "next") {
+	if (relnType == "follows") {
 		//left = stmt (line no / alias)
 		//right = stmt (line no / alias)
 
@@ -326,14 +389,101 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 			where child__id = stmt._id and parent__id not in (select parent__id from reln_parent where child__id = 2)
 		);
 
+
+		from stmt t1, stmt t2
+		where t1.pcd__id = t2.pcd__id AND t1.line_sno > t2.line_sno
+		AND NOT EXIST
+		(
+			select parent__id from reln_parent
+			where child__id in (t1._id, t2._id)
+			group_by parent__id 
+			having count(distinct child__id) = 1;
+		)
+
+
 		1. same pcd__id
 		2. right appear after left
 		3. parents must be the same (null-null),(8,14-8,14), not exist A is left' parent, but not right's parent. 
 
 		*/
 
+		string lineLeft, lineRight, pcdLeft, pcdRight, idLeft, idRight;
+
+		if (is_number(itemLeft)) {
+			//lineno
+			lineLeft = itemLeft;
+			pcdLeft = "(SELECT pcd__id from stmt where line_sno = " + itemLeft + ")";
+			idLeft = "(SELECT _id from stmt where line_sno = " + itemLeft + ")";
+		}
+		else {
+			//alias
+			queryTable tLeft = findTable("alias", itemLeft, queryCmd);
+			lineLeft = tLeft.tblAlias + ".line_sno";
+			pcdLeft = tLeft.tblAlias + ".pcd__id";
+			idLeft = tLeft.tblAlias + "._id";
+		}
+
+		if (is_number(itemRight)) {
+			//lineno
+			lineRight = itemRight;
+			pcdRight = "(SELECT pcd__id from stmt where line_sno = " + itemRight + ")";
+			idRight= "(SELECT _id from stmt where line_sno = " + itemRight + ")";
+		}
+		else {
+			//alias
+			queryTable tRight = findTable("alias", itemRight, queryCmd);
+			lineRight = tRight.tblAlias + ".line_sno";
+			pcdRight = tRight.tblAlias + ".pcd__id";
+			idRight = tRight.tblAlias + "._id";
+		}
+
+		//TODO: they have to be under same parent as well. parent must be shared by both sides
+
+		string condLine = is_recursive_reln ? lineLeft + " < " + lineRight : lineLeft + "+1 = " + lineRight;
+		string condition = " AND " + condLine + " AND " + pcdLeft + " = " + pcdRight;
+		condition += "\nAND NOT EXISTS (\n\
+			SELECT parent__id FROM reln_parent\n\
+			WHERE child__id = "+ idLeft +" OR child__id = "+idRight+"\n\
+			GROUP BY parent__id HAVING COUNT(DISTINCT child__id) = 1\n\
+		)\n";
+		queryCmd.conditions.push_back({ "","",condition ,1 });
+
 	}
 
+	else if (relnType == "next") {
+		//left = stmt (line no / alias)
+		//right = stmt (line no / alias)
+
+		/*
+		* next* (3, s)
+		select stmt.line_sno
+		from stmt
+		where stmt.line_sno > 3 and stmt.pcd__id = (select pcd__id from stmt where line_sno = 2)
+		and not exist
+		(
+			select *
+			from reln_parent
+			where child__id = stmt._id and parent__id not in (select parent__id from reln_parent where child__id = 2)
+		);
+
+
+		from stmt t1, stmt t2
+		where t1.pcd__id = t2.pcd__id AND t1.line_sno > t2.line_sno
+		AND NOT EXIST
+		(
+			select parent__id from reln_parent
+			where child__id in (t1._id, t2._id)
+			group_by parent__id
+			having count(distinct child__id) = 1;
+		)
+
+
+		1. same pcd__id
+		2. while and its children
+
+		*/
+	}
+	
 	else if (relnType == "parent") {
 		//left = stmt (line no / alias)
 		//right = stmt (line no / alias)
@@ -363,93 +513,108 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 
 		//queryCmd.tables.push_back({table, how_to_join, (alias)});
 
+		//left side: stmt (line no / alias)
+		queryTable leftStmtTable;
+		if (is_number(itemLeft)) {
+			leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(leftStmtTable);
+			queryCmd.conditions.push_back({ "AND",leftStmtTable.tblAlias + ".line_sno",itemLeft,0 });
+		}
+		else {
+			leftStmtTable = findTable("alias", itemLeft, queryCmd);
+		}
 
+		//right side: stmt (line no / alias)
+		queryTable rightStmtTable;
+		if (is_number(itemRight)) {
+			rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(rightStmtTable);
+			queryCmd.conditions.push_back({ "AND",rightStmtTable.tblAlias + ".line_sno",itemRight,0 });
+		}
+		else {
+			rightStmtTable = findTable("alias", itemRight, queryCmd);
+		}
+
+		//modify relations
+		queryTable parentTable = queryTable{ "reln_parent", "t" + to_string(++tmpSize), "" };
+		queryCmd.tables.push_back(parentTable);
+		queryCmd.connects.push_back(tblConnector{ leftStmtTable.tblAlias, "_id", parentTable.tblAlias, "parent__id" });
+		queryCmd.connects.push_back(tblConnector{ parentTable.tblAlias, "child__id", rightStmtTable.tblAlias, "_id" });
+
+		//recursive condition
+		if (!is_recursive_reln) {
+			queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
+			SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
+			AND child__id IN (SELECT parent__id FROM reln_parent WHERE child__id = " + rightStmtTable.tblAlias + "._id)\
+			)",1 });
+		}
 	}
 
 	else if (relnType == "uses") {
-		//left = stmt (line no / alias)
-		//right = instance (name / alias)
 
-		// YL solution
-		//int tmpSize = 1;
-		//if (is_number(itemLeft))
-		//{
-		//	/*
-		//	* select x such that uses* (2, x)
-		//	select t1.name
-		//	from stmt t2, reln_use t3, instance t1
-		//	where t2._id = t3.stmt__id and t3.instance__id = t1._id
-		//	and t2.line_no = 2
-		//	*/
-		//	queryTable instanceTable = findTable("alias", itemRight, queryCmd);
-		//	queryTable stmtTable = queryTable{ "stmt", "t" + to_string(++tmpSize), "" };
-		//	queryTable useTable = queryTable{ "reln_use", "t" + to_string(++tmpSize), "" };
-		//	queryCmd.tables.push_back(stmtTable);
-		//	queryCmd.tables.push_back(useTable);
-		//	queryCmd.connects.push_back(tblConnector{ stmtTable.tblAlias, "_id", useTable.tblAlias, "stmt__id" });
-		//	queryCmd.connects.push_back(tblConnector{ useTable.tblAlias, "instance__id", instanceTable.tblAlias, "_id" });
-		//	queryCmd.conditions.push_back(queryCond{ "AND", stmtTable.tblAlias + ".line_no", itemLeft, 0 });
-		//	cout << endl;
-		//}
-		//else {
-		//	/* uses* (a, "num")
-		//	select t1.line_sno
-		//	from stmt t1, reln_use t2, instance t3
-		//	where t1._id = t2.stmt__id and t2.instance__id = t3._id
-		//	and t3.name = "num"
+		int tmpSize = findTableNum(queryCmd);
 
-		//	*/
-		//	queryTable useTable = queryTable{ "reln_use", "t" + to_string(++tmpSize), "" };
-		//	queryTable instanceTable = queryTable{ "instance", "t" + to_string(++tmpSize), "" };
-
-		//	queryCmd.tables.push_back(useTable);
-		//	queryCmd.tables.push_back(instanceTable);
-		//	queryCmd.connects.push_back(tblConnector{ queryCmd.tables.at(0).tblAlias, "_id", useTable.tblAlias, "stmt__id" });
-		//	queryCmd.connects.push_back(tblConnector{ useTable.tblAlias, "instance__id", instanceTable.tblAlias, "_id" });
-		//	queryCmd.conditions.push_back(queryCond{ "AND", instanceTable.tblAlias + ".name", itemRight.substr(1, itemRight.size() - 2), 0 });
-		//	cout << endl;
-		//}
-
-
-		//SK solution
-		int tmpSize = 1;
+		/*
+		Uses(stmt, variable) ==> stmt <+> reln_use <+> instance
+		Uses(pcd, variable) ==> pcd <+> instance <+> reln_use
+		*/
 
 		//left side: stmt (line no / alias)
-		queryTable stmtTable;
+		queryTable leftTable;
 		if (is_number(itemLeft)) {
-			stmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
-			queryCmd.tables.push_back(stmtTable);
-			queryCmd.conditions.push_back({ "AND",stmtTable.tblAlias + ".line_sno",itemLeft,0 });
+			//Uses(x, y), x can be stmt no. value
+			leftTable = { "stmt", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(leftTable);
+			queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".line_sno",itemLeft,0 });
 		}
 		else {
-			stmtTable = findTable("alias", itemLeft, queryCmd);
+			// Uses(x, y) x can be stmt alias/ pcd alias/ pcd name value
+			leftTable = findTable("alias", itemLeft, queryCmd); // can be stmt/ procedure tbl
 		}
 
 		//right side: instance (name / alias)
-		queryTable instanceTable;
+		queryTable rightTable;
 		if (itemRight.find("\"") != string::npos) {
-			instanceTable = { "instance","t" + to_string(++tmpSize), "" };
-			queryCmd.tables.push_back(instanceTable);
-			queryCmd.conditions.push_back({ "AND",instanceTable.tblAlias + ".name",itemRight,0 });
+			//Uses(x, y), y can be inst name value
+			rightTable = { "instance","t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(rightTable);
+			queryCmd.conditions.push_back({ "AND",rightTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
 		}
 		else {
-			instanceTable = findTable("alias", itemRight, queryCmd);
+			// Uses(x, y), y can be inst alias
+			rightTable = findTable("alias", itemRight, queryCmd);// can be instance table
 		}
 
 		//modify relations
 		queryTable useTable = queryTable{ "reln_use", "t" + to_string(++tmpSize), "" };
 		queryCmd.tables.push_back(useTable);
-		queryCmd.connects.push_back(tblConnector{ stmtTable.tblAlias, "_id", useTable.tblAlias, "stmt__id" });
-		queryCmd.connects.push_back(tblConnector{ useTable.tblAlias, "instance__id", instanceTable.tblAlias, "_id" });
-
-
-		//iteration 3: left can be procedures
-
+		if (leftTable.tblName == "pcd")
+		{
+			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", rightTable.tblAlias, "pcd__id" });
+		}
+		else if (leftTable.tblName == "stmt")
+		{
+			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", useTable.tblAlias, "stmt__id" });
+		}
+		
+		if (!rightTable.tblAlias.empty())
+		{
+			queryCmd.connects.push_back(tblConnector{ useTable.tblAlias, "instance__id", rightTable.tblAlias, "_id" });
+		}
 	}
 
 	else if (relnType == "modifies") {
 
 		int tmpSize = 1;
+
+		//TODO: temp solution - to delete after updateing appendEntityTable method
+		for (int i = 0; i < queryCmd.conditions.size(); i++)
+		{
+			if (queryCmd.conditions.at(i).value == " AND t1.type = 'assign'")
+			{
+				queryCmd.conditions.at(i).value = " AND (t1.type = 'assign' OR t1.type = 'read')";
+			}
+		}
 		
 		//left side: stmt (line no / alias)
 		queryTable stmtTable;
@@ -467,7 +632,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 		if (itemRight.find("\"") != string::npos) {
 			instanceTable = { "instance","t" + to_string(++tmpSize), "" };
 			queryCmd.tables.push_back(instanceTable);
-			queryCmd.conditions.push_back({ "AND",instanceTable.tblAlias + ".name",itemRight,0 });
+			queryCmd.conditions.push_back({ "AND",instanceTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
 		}
 		else {
 			instanceTable = findTable("alias", itemRight, queryCmd);
@@ -479,29 +644,201 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd){
 		queryCmd.connects.push_back(tblConnector{ stmtTable.tblAlias, "_id", modifyTable.tblAlias, "stmt__id" });
 		queryCmd.connects.push_back(tblConnector{ modifyTable.tblAlias, "instance__id", instanceTable.tblAlias, "_id" });
 
-
-		/*
-		* modifies* (2, x)
-		select instance.name
-		from stmt, reln_modify, instance
-		where stmt._id = reln_modify.stmt__id and reln_modify.instance__id = instance._id
-		and stmt.line_no = 2
-
-		* modifies* (s, "num")
-		select stmt.line_sno
-		from stmt, reln_modify, instance
-		where stmt._id = reln_modify.stmt__id and reln_modify.instance__id = instance._id
-		and instance.name = "num"
-
-		*/
-
 		//iteration 3: left can be procedures
 	}
 
-	else if (relnType == "call") {
+	else if (relnType == "calls") {
 		//iteration 3
-		//left = procedure ('_' or alias)
-		//right = procedure ('_' or alias)
+
+		int tmpSize = 1;
+
+		/* Case 1
+		
+		(1)
+		procedure p;
+		Select p such that Calls(p, "second")
+		                    caller                callee
+		SELECT t1.name FROM pcd t1, reln_call t2, pcd t3
+		WHERE t2.caller__id = t1._id
+		AND t2.callee__id = t3._id
+		AND t3.name = 'second'
+
+		(2)
+		procedure p;
+		Select p such that Calls*(p, "second")
+
+		WITH RECURSIVE GETID(N) AS (
+		VALUES('second')
+		UNION
+		SELECT caller.name FROM reln_call, GETID, pcd caller, pcd callee
+		WHERE caller._id = reln_call.caller__id AND callee._id = reln_call.callee__id AND callee.name=GETID.N)
+									caller				 callee
+		SELECT t1.name FROM pcd t1, reln_call t2, pcd t3
+		WHERE t1._id = t2.caller__id AND t3._id = t2.callee__id AND t3.name IN GETID
+
+		(3)
+		procedure p;
+		Select p such that Calls*(p, _)
+
+		SELECT t1.name FROM pcd t1, reln_call t2
+		WHERE t2.caller__id = t1._id
+
+		*/ 
+
+		if (itemLeft.find("\"") == string::npos //left item is alias
+			&& (itemRight.find("\"") != string::npos || itemRight.find("_") != string::npos)) // right item is value/ _
+		{
+
+			queryTable pcdCallerTable = findTable("alias", itemLeft, queryCmd);
+			queryTable relnCallTable = queryTable{ "reln_call", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(relnCallTable);
+			queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
+			
+			if (itemRight != "_") {
+
+				queryTable pcdCalleeTable = queryTable{ "pcd", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(pcdCalleeTable);
+				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
+			
+				if (is_recursive_reln) {
+					queryCmd.conditions.push_back(queryCond{ "", "","AND t3.name IN GETID", 1 });
+					queryCmd.recursivePrefix = "WITH RECURSIVE GETID(N) AS (\
+												VALUES('"+ itemRight.substr(1, itemRight.size() - 2) +"')\
+												UNION\
+												SELECT caller.name FROM reln_call, GETID, pcd caller, pcd callee\
+												WHERE caller._id = reln_call.caller__id AND callee._id = reln_call.callee__id AND callee.name = GETID.N)";
+				}
+				else {
+					queryCmd.conditions.push_back(queryCond{ "AND", pcdCalleeTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2), 0 });
+				}
+			}
+		}
+
+		/* Case 2
+		
+		(1)
+		procedure p;
+		Select p such that Calls("second", p)
+						    callee                caller
+		SELECT t1.name FROM pcd t1, reln_call t2, pcd t3
+		WHERE t2.callee__id = t1._id
+		AND t2.caller__id = t3._id
+		AND t3.name = 'second'
+
+		(2)
+		procedure p;
+		Select p such that Calls*("first", p)
+
+		WITH RECURSIVE GETID(N) AS (
+		VALUES('first')
+		UNION
+		SELECT callee.name FROM reln_call, GETID, pcd caller, pcd callee
+		WHERE caller._id = reln_call.caller__id AND callee._id = reln_call.callee__id AND caller.name=GETID.N)
+								callee				
+		SELECT t1.name FROM pcd t1, reln_call t2, pcd t3
+		WHERE t3._id = t2.caller__id AND t1._id = t2.callee__id AND t3.name IN GETID
+
+		(3)
+		procedure p;
+		Select p such that Calls*(_, p)
+
+		SELECT t1.name FROM pcd t1, reln_call t2
+		WHERE t2.callee__id = t1._id
+
+		*/
+
+		else if ((itemLeft.find("\"") != string::npos || itemLeft.find("_") != string::npos) // left item is value/ _
+			&& itemRight.find("\"") == string::npos) // right item is alias
+		{
+
+			if (itemLeft == "_")
+			{
+				queryTable pcdCalleeTable = findTable("alias", itemRight, queryCmd);
+				queryTable relnCallTable = queryTable{ "reln_call", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(relnCallTable);
+				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
+
+			}
+			else {
+				queryTable pcdCalleeTable = findTable("alias", itemRight, queryCmd);
+				queryTable relnCallTable = queryTable{ "reln_call", "t" + to_string(++tmpSize), "" };
+				queryTable pcdCallerTable = queryTable{ "pcd", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(relnCallTable);
+				queryCmd.tables.push_back(pcdCallerTable);
+				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
+				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
+			
+				if (is_recursive_reln) {
+					queryCmd.conditions.push_back(queryCond{ "", "", "AND t3.name IN GETID", 1 });
+					queryCmd.recursivePrefix = "WITH RECURSIVE GETID(N) AS (\
+												VALUES('"+ itemLeft.substr(1, itemLeft.size() - 2) +"')\
+												UNION\
+												SELECT callee.name FROM reln_call, GETID, pcd caller, pcd callee\
+												WHERE caller._id = reln_call.caller__id AND callee._id = reln_call.callee__id AND caller.name = GETID.N)";
+				}
+				else {
+					queryCmd.conditions.push_back(queryCond{ "AND", pcdCallerTable.tblAlias + ".name",itemLeft.substr(1, itemLeft.size() - 2), 0 });
+				}
+			}
+		}
+
+		/* Case 3
+		
+		(1)
+		procedure p, q;
+		Select p such that Calls(p, q)
+					       			caller                 callee
+		SELECT t1.name, t3.name FROM pcd t1, reln_call t2, pcd t3
+		WHERE t2.caller__id = t1._id
+		AND t2.callee__id = t3._id
+
+		(2) //TODO: need to fix
+		procedure p, q;
+		Select p such that Calls*(p, q)
+
+		with RECURSIVE pair as
+		(
+		SELECT t1.name as name1, t3.name as name2 FROM pcd t1, reln_call t2, pcd t3
+		WHERE t2.caller__id = t1._id
+		AND t2.callee__id = t3._id
+		)
+		select t1.name1, t1.name2 from pair t1
+
+		*/
+
+		else if (itemLeft.find("\"") == string::npos && itemRight.find("\"") == string::npos)
+		{
+
+			if (is_recursive_reln) {
+
+				queryTable pairTable = queryTable{ "pair", "t" + to_string(tmpSize++), "" };
+				queryItem callerItem = queryItem{ pairTable.tblAlias, "name1" };
+				queryItem calleeItem = queryItem{ pairTable.tblAlias, "name2" };
+				queryCmd.selections.push_back(callerItem);
+				queryCmd.selections.push_back(calleeItem);
+				queryCmd.tables.push_back(pairTable);
+
+				queryCmd.recursivePrefix = "with RECURSIVE pair as(\
+						SELECT t1.name as name1, t3.name as name2 FROM pcd t1, reln_call t2, pcd t3\
+						WHERE t2.caller__id = t1._id\
+						AND t2.callee__id = t3._id )";
+			}
+			else {
+				queryTable pcdCallerTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "p" };
+				queryTable relnCallTable = queryTable{ "reln_call", "t" + to_string(tmpSize++), "" };
+				queryTable pcdCalleeTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "q" };
+				queryItem callerItem = queryItem{pcdCallerTable.tblAlias, "name"};
+				queryItem calleeItem = queryItem{ pcdCalleeTable.tblAlias, "name" };
+
+				queryCmd.selections.push_back(callerItem);
+				queryCmd.selections.push_back(calleeItem);
+				queryCmd.tables.push_back(pcdCallerTable);
+				queryCmd.tables.push_back(relnCallTable);
+				queryCmd.tables.push_back(pcdCalleeTable);
+				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
+				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
+			}
+		}
 	}
 }
 
@@ -531,6 +868,23 @@ queryTable Database::findTable(string type, string key, queryCmd queryCmd) {
 		}
 	}
 	return {};
+}
+
+
+int Database::findTableNum(queryCmd queryCmd) {
+
+	int tempSize = 0;
+
+	for (queryTable table : queryCmd.tables) {
+		string numInStr = trim(table.tblAlias, 't');
+
+		if (is_number(numInStr))
+		{
+			tempSize = stoi(numInStr);
+		}
+
+	}
+	return tempSize;
 }
 
 
@@ -599,7 +953,7 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryCmd) {
 
 	dbResults.clear();
-	string queryStr = "SELECT ";
+	string queryStr = "\nSELECT DISTINCT ";
 
 	//build select clause
 	for (queryItem item : queryCmd.selections) {
@@ -608,16 +962,16 @@ void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryC
 	queryStr = regex_replace(queryStr, std::regex("\,\\s\$"), "");
 
 	//build from clause
-	queryStr += " FROM ";
+	queryStr += " \nFROM ";
 	for (queryTable tbl : queryCmd.tables) {
 		queryStr += tbl.tblName + " " + tbl.tblAlias + ", ";
 	}
 	queryStr = regex_replace(queryStr, std::regex("\,\\s\$"), "");
 
 	//build join conditions
-	queryStr += " WHERE 1=1";
+	queryStr += " \nWHERE 1=1";
 	for (tblConnector connector : queryCmd.connects) {
-		queryStr += " AND " + connector.aliasLeft + "." + connector.keyLeft + " = " + connector.aliasRight + "." + connector.keyRight;
+		queryStr += " AND " + connector.aliasLeft + "." + connector.keyLeft + " = " + connector.aliasRight + "." + connector.keyRight + "\n";
 	}
 	queryStr = regex_replace(queryStr, std::regex("1=1 AND "), "");
 
@@ -632,6 +986,10 @@ void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryC
 	//queryStr = "SELECT stmt.line_sno AS a, reln_modify.expr \
 	//	FROM reln_modify , stmt\
 	//	WHERE 1=1  AND reln_modify.stmt__id = stmt._id AND stmt.type = 'assign';";
+
+	if (!queryCmd.recursivePrefix.empty()) {
+		queryStr = queryCmd.recursivePrefix + queryStr;
+	}
 
 	cout << "run query: " << queryStr << endl;
 	sqlite3_exec(dbConnection, queryStr.c_str(), callback, 0, &errorMessage);
@@ -837,7 +1195,10 @@ int Database::callback(void* NotUsed, int argc, char** argv, char** azColName) {
 //
 //}
 
+//TODO: maybe vector<string> types
+//
 void Database::appendEntityTable(string type, string alias, queryCmd& queryCmd) {
+	// type =  procedure/ stmt/ variable/ assign/ while/ if/ print/ read/ constant
 	
 	string tblAlias = "t" + to_string(queryCmd.tables.size() + 1);
 	string tblName = "";

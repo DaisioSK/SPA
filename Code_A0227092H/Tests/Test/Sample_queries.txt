@@ -28,13 +28,3 @@ procedure p, q;
 Select <p, q> such that Calls*(p, q)
 first second, second third
 5000
-7 - Call(7) 
-procedure p;
-Select p such that Calls (p, _)
-first, second
-5000
-8 - Call(8) 
-procedure p;
-Select p such that Calls (_, p)
-second, third
-5000

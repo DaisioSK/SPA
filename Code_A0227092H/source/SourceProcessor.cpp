@@ -2,20 +2,50 @@
 #include "iostream"
 #include "regex"
 
-static vector<string> split(string str, string token) {
+
+static vector<string> split(string str, string token, bool keep) {
 	vector<string>result;
 	while (str.size()) {
 		int index = str.find(token);
 		if (index != string::npos) {
-			if(index != 0) result.push_back(str.substr(0, index));
+			if (index != 0) {
+				result.push_back(str.substr(0, index));
+				if (keep) result.push_back(token);
+			}
 			str = str.substr(index + token.size());
-			if (str.size() == 0)result.push_back(str);
+			if (str.size() == 0) result.push_back(str);
 		}
 		else {
 			result.push_back(str);
 			str = "";
 		}
 	}
+	return result;
+}
+
+static vector<string> splitByOperators(string str) {
+	vector<string>result;
+	int index = 0;
+	bool endWithOps = false;
+
+	for (int i = 0; i < str.size(); i++)
+	{
+		char c = str[i];
+		if (c == ' ') continue;
+
+		if (c == '=' || c == '+' || c == '-'|| c == '*' || c == '/' || c == '(' || c == ')')
+		{
+			if (i > index) result.push_back(str.substr(index, i - index));
+			result.push_back(string(1, c));
+			index = i + 1;
+			endWithOps = true;
+			continue;
+		}
+		endWithOps = false;
+	}
+
+	if(!endWithOps) result.push_back(str.substr(index, str.size() - index));
+
 	return result;
 }
 
@@ -38,6 +68,23 @@ static bool isNumber(const string& str) {
 	istringstream sin(str);
 	double test;
 	return sin >> test && sin.eof();
+}
+
+static string trim(string s, char c) {
+	if (!s.empty())
+	{
+		if (c == NULL)
+		{
+			s.erase(remove(s.begin(), s.end(), ' '), s.end());
+			s.erase(remove(s.begin(), s.end(), ';'), s.end());
+			s.erase(remove(s.begin(), s.end(), '\t'), s.end());
+		}
+		else {
+			s.erase(remove(s.begin(), s.end(), c), s.end());
+		}
+	}
+
+	return s;
 }
 
 
@@ -70,11 +117,11 @@ void SourceProcessor::process(string program) {
 	std::regex expr_else("\^\\s\*\\}\\s\*else\\s\*\\{\\s\*\$");
 	
 	////iteration 3
-	//std::regex expr_call("procedure\\s\*\[a-zA-z\]\+\\s\*\\{\\s\*\$");
+	std::regex expr_call("\^\\s\*call\\s\*\[a-zA-z0-9\]\+;\\s\*\$");
 
 
 	//SIMPLE assume that 1 line is 1 stmt, so split into lines.
-	vector<string> lines = split(program, "\n");
+	vector<string> lines = split(program, "\n", false);
 	vector<string> tokens;
 	vector<bracketInfo> brackets;
 	string clean_line;
@@ -85,39 +132,50 @@ void SourceProcessor::process(string program) {
 	for (auto& line : lines) {
 		//cout << line << endl;
 
+		if (line == "") continue;
+
 		//init
-		clean_line = split(line, ";").at(0);
-		tokens = split(clean_line, " ");
-
-		//reset
-		//newID = 0;
-
+		clean_line = trim(line, NULL);
+		line = trim(line, '\t');
+		//clean_line = split(line, ";").at(0);
+		//tokens = split(line, " ");
 
 		if (regex_match(line, expr_pcd)) {
-			Database::insertProcedure(tokens[1], line_no+1, newID);
+			clean_line = trim(clean_line, '{');
+			tokens = split(clean_line, "procedure", false); // {"proc_name"};
+
+			Database::insertProcedure(tokens[0], line_no+1, newID);
 			pcdID = newID;
 			cout << "find a procedure here: " << line << ", id is " << newID << endl;
 
-			//TODO: add the pcdID to a stack to trace the start&end of a procudure
 			brackets.push_back({ "pcd", pcdID });
 		}
 
 		//read statement
 		else if (regex_match(line, expr_read)) {
-			readStmtHandler(tokens[1], pcdID, line_no, newID);
+			tokens = split(clean_line, "read", false); // {"var_name"};
+
+			readStmtHandler(tokens[0], pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a read statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
 		}
 
 		//print statement
 		else if (regex_match(line, expr_print)) {
-			printStmtHandler(tokens[1], pcdID, line_no, newID);
+			tokens = split(clean_line, "print", false); // {"var_name"};
+
+			printStmtHandler(tokens[0], pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a print statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
 		}
 
 		//assign statement
 		else if (regex_match(line, expr_assgin)) {
+			tokens = split(clean_line, "=", true); // {"var_name", "=", "assigned_val"};
+			vector<string> rhs_tokens = splitByOperators(tokens[2]);
+			tokens.pop_back();
+			tokens.insert(tokens.end(), rhs_tokens.begin(), rhs_tokens.end());
+
 			assignStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a assign statement: " << line << ", id is " << newID << endl;
 			parentRelnHander(brackets, newID);
@@ -125,8 +183,9 @@ void SourceProcessor::process(string program) {
 
 		// while statement
 		else if (regex_match(line, expr_while)) {
-			//TODO: add while stmt record
-			whileStmtHandler(tokens[1], pcdID, line_no, newID);
+			tokens = split(clean_line, "while", false);
+
+			whileStmtHandler(tokens[0], pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a while statement: " << line << ", id is " << newID << endl;
 
 			brackets.push_back(bracketInfo{ "while", newID });
@@ -134,8 +193,9 @@ void SourceProcessor::process(string program) {
 
 		// if statement
 		else if (regex_match(line, expr_if)) {
-			//TODO: add if stmt record
-			ifStmtHandler(tokens[1], pcdID, line_no, newID);
+			tokens = split(clean_line, "if", false);
+
+			ifStmtHandler(tokens[0], pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a if statement: " << line << ", id is " << newID << endl;
 
 			brackets.push_back(bracketInfo{ "if", newID });
@@ -150,8 +210,15 @@ void SourceProcessor::process(string program) {
 			//brackets.push_back(bracketInfo{ "else", newID });
 		}
 
+		// call statement
+		else if (regex_match(line, expr_call)) {\
+			tokens = split(clean_line, "call", false);
+
+			callStmtHandler(tokens[0], pcdID, line_no, newID);
+			cout << "line " << line_no - 1 << " is a call statement: " << line << ", id is " << newID << endl;
+		}
+
 		else if (regex_match(line, expr_close)) {
-			//TODO: update pcd table to close it
 			cout << "close here: " << line << endl;
 
 			if (!brackets.empty()) {
@@ -161,12 +228,12 @@ void SourceProcessor::process(string program) {
 				{
 					Database::updateProcedure(pcdID, line_no);
 				}
-				else if (currentBracket.type == "while") {
-					//TODO: update stmt table - while
+				else if (currentBracket.type == "while") 
+				{
 					Database::updateStmt(currentBracket.db_id, line_no);
 				}
-				else if (currentBracket.type == "if") {
-					//TODO: update stmt table - if
+				else if (currentBracket.type == "if") 
+				{
 					Database::updateStmt(currentBracket.db_id, line_no);
 				}
 
@@ -240,45 +307,68 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, int pcdID, int& l
 	Database::insertStatement("assign", line_no, line_no, pcdID, newID);
 	
 	for (int i = 0; i < tokens.size(); i++) {
+
+		string currentToken = tokens[i];
+		bool isNum = isNumber(currentToken);
+
 		//split by equal sigh
 		//seems == is alr defined in string class, but good to know the compare()
-		if (tokens[i].compare("=") == 0) {
+		if (currentToken.compare("=") == 0) {
 			metEqualSign = 1;
 			continue;
 		}
 
-		if (regex_match(tokens[i], expr_inst)) {
+		if (regex_match(currentToken, expr_inst)) {
 			if (metEqualSign) {
-				expression.append(tokens[i]);
-				if (regex_match(tokens[i], expr_var)) {
-					if (isNumber(tokens[2]))
-					{
-						instID = getInstID(tokens[i], pcdID, "constant");
-					}
-					else {
-						instID = getInstID(tokens[i], pcdID, "variable");
-					}
+				expression.append(currentToken);
+				if (regex_match(currentToken, expr_var)) 
+				{
+					//current token is variable
+					instID = getInstID(currentToken, pcdID, "variable");	
 					Database::insertUseReln(newID, instID);
 				}
-					
+				else {
+					//current token is constant
+					instID = getInstID(currentToken, pcdID, "constant");
+				}
 			}
 			else {
-				if (isNumber(tokens[2]))
+				if (regex_match(currentToken , expr_var)) 
 				{
-					modInstID = getInstID(tokens[i], pcdID, "constant");
+					modInstID = getInstID(currentToken, pcdID, "variable");
 				}
 				else {
-					modInstID = getInstID(tokens[i], pcdID, "variable");
+					modInstID = getInstID(currentToken, pcdID, "constant");
 				}
 			}
 		}
-		else 
-			if (metEqualSign) expression.append(tokens[i]);
-		
+		else {
+			if (metEqualSign)
+			{
+				expression.append(currentToken);
+			}
+			else {
+				if (regex_match(currentToken, expr_var))
+				{
+					modInstID = getInstID(currentToken, pcdID, "variable");
+				}
+				else {
+					modInstID = getInstID(currentToken, pcdID, "constant");
+				}
+			}
+		}
 	}
-
 	Database::insertModifyReln(newID, modInstID, expression);
 
+	line_no++;
+}
+
+void SourceProcessor::callStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
+
+	//insert call reln and get id
+
+	//TODO: to allow upper/lower case - see queryprocessor lowercase() 
+	Database::insertCallReln(pcdID, instName);
 	line_no++;
 }
 
@@ -327,4 +417,9 @@ int SourceProcessor::getInstID(string name, int pcdID, string type) {
 	return instID;
 }
 
+static void lowercase(string& str) {
+	std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {
+		return std::tolower(c);
+	});
+}
 
