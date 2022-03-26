@@ -13,8 +13,7 @@ procedure second {
   }
   if (x > 0) then {
     x = x + 1;
-  }
-  else {
+  } else {
     z = 1; 
   }
   z = z + x + i;

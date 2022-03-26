@@ -19,15 +19,15 @@ public:
 	void process(string program);
 
 	//method to handle print statement
-	static void printStmtHandler(string instName, int pcdID, int& line_no, int& newID);
+	static void printStmtHandler(string instName, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID);
 
-	static void readStmtHandler(string instName, int pcdID, int& line_no, int& newID);
+	static void readStmtHandler(string instName, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID);
 
-	static void assignStmtHandler(vector<string> tokens, int pcdID, int& line_no, int& newID);
+	static void assignStmtHandler(vector<string> tokens, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID);
 	
-	static void whileStmtHandler(string instName, int pcdID, int& line_no, int& newID);
+	static void whileStmtHandler(vector<string> tokens, int pcdID, int& line_no, int& newID);
 
-	static void ifStmtHandler(string instName, int pcdID, int& line_no, int& newID);
+	static void ifStmtHandler(vector<string> tokens, int pcdID, int& line_no, int& newID);
 
 	static void parentRelnHander(vector<bracketInfo> brackets, int newID);
 

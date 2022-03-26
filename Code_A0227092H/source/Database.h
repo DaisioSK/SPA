@@ -101,9 +101,11 @@ public:
 
 	//method to insert a modify relationship
 	static void insertModifyReln(int stmt__id, int instance__id, string expression);
+	static void insertPcdModifyReln(int pcd__id, int instance__id, string expression);
 
 	//method to insert a use relationship
 	static void insertUseReln(int stmt__id, int instance__id);
+	static void insertPcdUseReln(int pcd__id, int instance__id);
 
 	//method to insert a call relationship
 	static void insertCallReln(int caller__id, string callee);
