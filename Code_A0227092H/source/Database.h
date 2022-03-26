@@ -65,6 +65,12 @@ struct queryPattern {
 	bool openRight;
 };
 
+struct queryNextCond {
+	int prevStmtIndex;
+	int nextStmtIndex;
+};
+
+
 // The Database has to be a static class due to various constraints.
 // It is advisable to just add the insert / get functions based on the given examples.
 class Database {
@@ -101,6 +107,8 @@ public:
 	//method to insert a call relationship
 	static void insertCallReln(int caller__id, int callee__id);
 
+	//method to insert a next relationship
+	static void insertNextReln(int cur_stmt__id, int next_stmt__id);
 
 	/**
 		getter
@@ -135,17 +143,17 @@ public:
 	static void appendTables(string& queryString, vector<string> tables);
 
 	//build a query item 
-	static void buildQueryItem(string objType, string alias, queryItem& queryItem);
+	//static void buildQueryItem(string objType, string alias, queryItem& queryItem);
 	static void prepareTableGraph(vector<tableEdge> graph[]);
 	static void addEdge(vector<tableEdge> graph[], int src, int desc, string joinQuery);
 	static void BFSJoinTable(string& queryString, vector<string> tables);
 
 	static void selectHandler(string str, queryCmd& queryCmd);
-	static void suchThatHandler(string str, queryCmd& queryCmd);
+	static void suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextCond>& nextConds);
 	static void patternHandler(string str, queryCmd& queryCmd, vector<queryPattern>& patterns);
 
 	static void queryCmdToResult(vector<vector<string>>& result, queryCmd queryCmd);
-	static queryItem getSelectionByAlias(queryCmd queryCmd, string alias);
+	//static queryItem getSelectionByAlias(queryCmd queryCmd, string alias);
 
 	/**
 		new query parser
@@ -157,6 +165,10 @@ public:
 	//find pattern string from stmt
 	static string getPatternString(string str);
 
+	//test the recursive next reln between 2 stmt ids
+	static bool findNextReln(int prevID, int nextID);
+	static void initRoutes();
+
 private:
 	// the connection pointer to the database
 	static sqlite3* dbConnection; 
@@ -167,5 +179,6 @@ private:
 	// callback method to put one row of results from the database into the dbResults vector
 	// This method is called each time a row of results is returned from the database
 	static int callback(void* NotUsed, int argc, char** argv, char** azColName);
+
 };
 
