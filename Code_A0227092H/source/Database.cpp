@@ -495,8 +495,13 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				rightStmtTable = findTable("alias", itemRight, queryCmd);
 			}
 			queryCmd.selections.push_back({ rightStmtTable.tblAlias, "_id" });
+<<<<<<< HEAD
 		}
 	}
+=======
+
+  }
+>>>>>>> f0838f2f62e6f29ea32bef2019f6829f64d2356a
 	else if (relnType == "parent") {
 
 		//left side: stmt (line no / alias)
