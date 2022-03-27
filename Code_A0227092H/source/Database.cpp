@@ -634,21 +634,33 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		}
 
 		//right side: instance (name / alias)
-		queryTable instanceTable;
+		queryTable rightTable;
 		if (itemRight.find("\"") != string::npos) {
-			instanceTable = { "instance","t" + to_string(++tmpSize), "" };
-			queryCmd.tables.push_back(instanceTable);
-			queryCmd.conditions.push_back({ "AND",instanceTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
+			rightTable = { "instance","t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(rightTable);
+			queryCmd.conditions.push_back({ "AND", rightTable.tblAlias + ".name",itemRight.substr(1, itemRight.size() - 2),0 });
 		}
 		else {
-			instanceTable = findTable("alias", itemRight, queryCmd);
+			rightTable = findTable("alias", itemRight, queryCmd);
 		}
 
 		//modify relations
 		queryTable modifyTable = queryTable{ "reln_modify", "t" + to_string(++tmpSize), "" };
 		queryCmd.tables.push_back(modifyTable);
-		queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", modifyTable.tblAlias, colLeft });
-		queryCmd.connects.push_back(tblConnector{ modifyTable.tblAlias, "instance__id", instanceTable.tblAlias, "_id" });
+
+		if (leftTable.tblName == "pcd")
+		{
+			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", rightTable.tblAlias, colLeft });
+		}
+		else if (leftTable.tblName == "stmt")
+		{
+			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", modifyTable.tblAlias, colLeft });
+		}
+
+		if (!rightTable.tblAlias.empty())
+		{
+			queryCmd.connects.push_back(tblConnector{ modifyTable.tblAlias, "instance__id", rightTable.tblAlias, "_id" });
+		}
 
 	}
 
