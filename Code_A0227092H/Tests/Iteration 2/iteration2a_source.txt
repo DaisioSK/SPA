@@ -1,4 +1,4 @@
-procedure proc {
+procedure proc { 
 	i = 5;
 	x = 2;
 	y = x + 1 + i* 3/(5-7);

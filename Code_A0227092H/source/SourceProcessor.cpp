@@ -42,7 +42,7 @@ static vector<string> splitByOperators(string str) {
 		char c = str[i];
 		if (c == ' ') continue;
 
-		if (c == '=' || c == '>' || c == '<' || c == '+' || c == '-'|| c == '*' || c == '/' || c == '(' || c == ')')
+		if (c == '=' || c == '>' || c == '<' || c == '+' || c == '-'|| c == '*' || c == '/' || c == '%' || c == '(' || c == ')')
 		{
 			if (i > index) result.push_back(str.substr(index, i - index));
 			result.push_back(string(1, c));
@@ -113,7 +113,7 @@ void SourceProcessor::process(string program) {
 	std::regex expr_pcd ("\^\\s\*procedure\\s\*\[a-zA-z0-9\]\+\\s\*\\{\\s\*\$");
 	std::regex expr_read ("\^\\s\*read\\s\*\[a-zA-z0-9\]\+;\\s\*\$");
 	std::regex expr_print("\^\\s\*print\\s\*\[a-zA-z0-9\]\+;\\s\*\$");
-	std::regex expr_assgin("\^\\s\*\[a-zA-z0-9\]\+\\s\*=\\s\*\[a-zA-z0-9\\s\+\-\\/\\(\\)\\*\]\+\\s\*;\\s\*\$");
+	std::regex expr_assgin("\^\\s\*\[a-zA-z0-9\]\+\\s\*=\\s\*\[a-zA-z0-9\\s\+\-\\/\\(\\)\\%\\*\]\+\\s\*;\\s\*\$");
 	std::regex expr_close("\^\\s\*\\}\\s\*\$");
 	
 	std::regex expr_inst("\^\[a-zA-z\]\[a-zA-z0-9\]\*\$");
@@ -158,7 +158,6 @@ void SourceProcessor::process(string program) {
 			Database::insertProcedure(tokens[0], line_no+1, newID);
 			pcdID = newID;
 			cout << "find a procedure here: " << line << ", id is " << newID << endl;
-
 
 			brackets.push_back({ "pcd", pcdID });
 		}
@@ -216,7 +215,6 @@ void SourceProcessor::process(string program) {
 
 		// while statement
 		else if (regex_match(line, expr_while)) {
-			//tokens = split(clean_line, "while", false);
 
 			tokens = splitByOperators(clean_line);
 
@@ -235,7 +233,7 @@ void SourceProcessor::process(string program) {
 
 		// if statement
 		else if (regex_match(line, expr_if)) {
-			tokens = split(clean_line, "if", false);
+			tokens = splitByOperators(clean_line);
 
 			ifStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a if statement: " << line << ", id is " << newID << endl;
@@ -490,8 +488,14 @@ void SourceProcessor::whileStmtHandler(vector<string> tokens, int pcdID, int& li
 	//read condition and insert use reln
 	std::regex expr_var("\[a-zA-z\]\[a-zA-z0-9\]\*\$");
 	for (string token : tokens) {
-		if (regex_match(token, expr_var) && token != "while") {
-			Database::insertUseReln(newID, getInstID(token, pcdID, "variable"));
+		if (token != "while") {
+			if (regex_match(token, expr_var))
+			{
+				Database::insertUseReln(newID, getInstID(token, pcdID, "variable"));
+			}
+			else if(isNumber(token)){
+				getInstID(token, pcdID, "constant");
+			}
 		}
 	}
 
@@ -509,8 +513,14 @@ void SourceProcessor::ifStmtHandler(vector<string> tokens, int pcdID, int& line_
 	//read condition and insert use reln
 	std::regex expr_var("\[a-zA-z\]\[a-zA-z0-9\]\*\$");
 	for (string token : tokens) {
-		if (regex_match(token, expr_var) && token != "if") {
-			Database::insertUseReln(newID, getInstID(token, pcdID, "variable"));
+		if (token != "if") {
+			if (regex_match(token, expr_var))
+			{
+				Database::insertUseReln(newID, getInstID(token, pcdID, "variable"));
+			}
+			else if (isNumber(token)) {
+				getInstID(token, pcdID, "constant");
+			}
 		}
 	}
 
