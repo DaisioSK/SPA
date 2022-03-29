@@ -288,6 +288,7 @@ static string trim(string s, char c) {
 	return s;
 }
 
+
 static void lowercase(string& str) {
 	std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {
 		return std::tolower(c);
@@ -353,7 +354,6 @@ static vector<string> split_multi(string str, vector<string> tokens) {
 	return result;
 
 }
-
 
 
 void Database::selectHandler(string str, queryCmd& queryCmd){
@@ -541,14 +541,31 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		queryTable parentTable = queryTable{ "reln_parent", "t" + to_string(++tmpSize), "" };
 		queryCmd.tables.push_back(parentTable);
 		queryCmd.connects.push_back(tblConnector{ leftStmtTable.tblAlias, "_id", parentTable.tblAlias, "parent__id" });
-		queryCmd.connects.push_back(tblConnector{ parentTable.tblAlias, "child__id", rightStmtTable.tblAlias, "_id" });
+
+		if (!rightStmtTable.tblAlias.empty())
+		{
+			queryCmd.connects.push_back(tblConnector{ parentTable.tblAlias, "child__id", rightStmtTable.tblAlias, "_id" });
+
+		}
 
 		//recursive condition
 		if (!is_recursive_reln) {
-			queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
-			SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
-			AND child__id IN (SELECT parent__id FROM reln_parent WHERE child__id = " + rightStmtTable.tblAlias + "._id)\
-			)",1 });
+
+			if (!rightStmtTable.tblAlias.empty())
+			{
+				queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
+				SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
+				AND child__id IN (SELECT parent__id FROM reln_parent WHERE child__id = " + rightStmtTable.tblAlias + "._id)\
+				)",1 });
+			}
+			else {
+				queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
+				SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
+				AND child__id IN (SELECT parent__id FROM reln_parent)\
+				)",1 });
+			}
+
+			
 		}
 	}
 
@@ -1023,7 +1040,7 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 
 		//join instance table
 		tmpSize = queryCmd.tables.size() + 1;
-		appendEntityTable("instance", "inst" + to_string(tmpSize), queryCmd);
+		appendEntityTable("instance", { "inst" + to_string(tmpSize) }, queryCmd);
 		queryCmd.conditions.push_back({ "",""," AND inst" + to_string(tmpSize) + ".name = " + clean_pattern_left , true });
 
 		//join reln_use table
@@ -1304,29 +1321,33 @@ int Database::callback(void* NotUsed, int argc, char** argv, char** azColName) {
 //
 //}
 
-//TODO: maybe vector<string> types
-//
-void Database::appendEntityTable(string type, string alias, queryCmd& queryCmd) {
-	// type =  procedure/ stmt/ variable/ assign/ while/ if/ print/ read/ constant
-	
-	string tblAlias = "t" + to_string(queryCmd.tables.size() + 1);
-	string tblName = "";
 
-	if (type == "procedure") {
-		tblName = "pcd";
-	}
-	else if (type == "variable" || type == "constant" || type == "instance") {
-		tblName = "instance";
-		if (type != "instance") {
-			queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true});
+void Database::appendEntityTable(string type, vector<string> aliases, queryCmd& queryCmd) {
+	// type =  procedure/ stmt/ variable/ assign/ while/ if/ print/ read/ constant
+
+	for ( int i = 0; i < aliases.size(); i++)
+	{
+		
+		string alias = trim(aliases[i], ',');
+		string tblAlias = "t" + to_string(queryCmd.tables.size() + 1);
+		string tblName = "";
+
+		if (type == "procedure") {
+			tblName = "pcd";
 		}
-	}
-	else {
-		tblName = "stmt";
-		if (type != "stmt") {
-			queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true });
+		else if (type == "variable" || type == "constant" || type == "instance") {
+			tblName = "instance";
+			if (type != "instance") {
+				queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true });
+			}
 		}
+		else {
+			tblName = "stmt";
+			if (type != "stmt") {
+				queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true });
+			}
+		}
+
+		queryCmd.tables.push_back(queryTable{ tblName, tblAlias , alias });
 	}
-	
-	queryCmd.tables.push_back(queryTable{ tblName, tblAlias , alias });
 }
