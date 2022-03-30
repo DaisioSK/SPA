@@ -164,7 +164,7 @@ public:
 	/**
 		new query parser
 	*/
-	static void appendEntityTable(string type, string alias, queryCmd& queryCmd);
+	static void appendEntityTable(string type, vector<string> aliases, queryCmd& queryCmd);
 	static queryTable findTable(string type, string key, queryCmd const queryCmd);
 	static int findTableNum(queryCmd const queryCmd);
 

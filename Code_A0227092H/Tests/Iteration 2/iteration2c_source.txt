@@ -1,4 +1,4 @@
-procedure NestedWhileIf {
+procedure NestedWhileIf { 
     read a;
     b = 20;
     print d;
