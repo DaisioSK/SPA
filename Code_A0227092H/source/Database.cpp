@@ -545,7 +545,6 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		if (!rightStmtTable.tblAlias.empty())
 		{
 			queryCmd.connects.push_back(tblConnector{ parentTable.tblAlias, "child__id", rightStmtTable.tblAlias, "_id" });
-
 		}
 
 		//recursive condition
@@ -1015,7 +1014,45 @@ int Database::findTableNum(queryCmd queryCmd) {
 
 void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPattern>& patterns){
 	//a(_, _"x * y + z * t"_)
+	/*
+	LHS: _ or variable or "string"
+	RHS: _ or "string"
 
+	Case 1: pattern a(_, _)
+
+		SELECT DISTINCT t1.line_sno, t2.expr
+		FROM stmt t1, reln_modify t2
+		WHERE t1._id = t2.stmt__id
+		AND t1.type = 'assign';
+
+	Case 2: pattern a(_, _"i"_)
+
+		SELECT DISTINCT t1.line_sno, t2.expr FROM stmt t1, reln_modify t2
+		WHERE t1._id = t2.stmt__id
+		AND t1.type = 'assign';
+
+	Case 3: pattern a(v, _)
+
+		SELECT DISTINCT t1.line_sno, t3.expr
+		FROM stmt t1, instance t2, reln_modify t3, instance t4, reln_use t5
+		WHERE t1._id = t3.stmt__id
+		AND t4._id = t5.instance__id AND t1.type = 'assign' AND t2.type = 'variable';
+
+	Case 4: pattern a(v, _"i"_)
+
+		
+	Case 5: pattern a("i", _)
+
+	Case 6: pattern a("x", _"i"_)
+
+		SELECT DISTINCT t1.line_sno, t2.expr
+		FROM stmt t1, reln_modify t2, instance t3
+		WHERE t1._id = t2.stmt__id
+		AND t2.instance__id = t3._id
+		AND t1.type = 'assign'
+		AND t3.name = 'x';
+
+	*/
 	Node n;
 	int tmpSize = 0;
 	vector<string> sub_str = split(str, ",");
@@ -1035,18 +1072,26 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 	//register the left pattern
 	string pattern_left = tokens[1];
 	string clean_pattern_left = regex_replace(pattern_left, std::regex("\[_\\s\"\]"), std::string(""));
+
 	if (clean_pattern_left != "") {
 		//FROM reln_use t1 JOIN instance i ON i._id = t1.instance__id AND i.name = ...
 
 		//join instance table
 		tmpSize = queryCmd.tables.size() + 1;
-		appendEntityTable("instance", { "inst" + to_string(tmpSize) }, queryCmd);
-		queryCmd.conditions.push_back({ "",""," AND inst" + to_string(tmpSize) + ".name = " + clean_pattern_left , true });
+		//appendEntityTable("instance", {pattern_left}, queryCmd);
+		queryTable instanceTable = queryTable{ "instance", "t" + to_string(tmpSize), pattern_left };
+		queryCmd.tables.push_back(instanceTable);
+		queryCmd.connects.push_back(tblConnector{relnTblAlias, "instance__id", instanceTable.tblAlias, "_id"});
+
+		if (pattern_left.find("\"") != string::npos) // Left side is "string"
+		{
+			queryCmd.conditions.push_back({ "",""," AND " + instanceTable.tblAlias + ".name = '" + clean_pattern_left + "'", true});
+		}
 
 		//join reln_use table
-		relnTblAlias = "t" + to_string(tmpSize);
+		/*relnTblAlias = "t" + to_string(++tmpSize);
 		queryCmd.tables.push_back(queryTable{ "reln_use", relnTblAlias, "" });
-		queryCmd.connects.push_back({ "inst" + to_string(tmpSize), "_id", relnTblAlias, "instance__id" });
+		queryCmd.connects.push_back({ "t" + to_string(--tmpSize), "_id", relnTblAlias, "instance__id" });*/
 
 	}
 
@@ -1059,20 +1104,12 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 		ExprTree::exprStrToNode(clean_pattern_right, n);
 		patterns.push_back(queryPattern{ ptn_index, n, openLeft, openRight });
 	}
+	else {
+		Node n = Node{"", 0, NULL, NULL};
+		patterns.push_back(queryPattern{ ptn_index, n, openLeft, openRight });
+	}
 
 	//after query the results, need to loop the result and do tree mapping
-	//end of function. now test algorithm
-
-
-	//string test_pattern = "d+e";
-	//string test2_pattern = "b*c";
-
-	//Node n1, n2;
-	//ExprTree::exprStrToNode(clean_pattern, n1);
-	//ExprTree::exprStrToNode(test2_pattern, n2);
-
-	//bool test = ExprTree::HasSubtree(&n1, &n2);
-
 }
 
 void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryCmd) {

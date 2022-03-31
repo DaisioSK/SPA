@@ -180,28 +180,28 @@ Select s such that Parent(s, _)
 5000
 1052-  comment
 assign a;
-Select a pattern a(_, _"i"_)
-6, 14, 17, 24, 31, 19, 21, 3, 9
+Select a pattern a(_, _"a"_)
+11, 14, 15
 5000
 1053-  comment
 assign a;
 Select a pattern a(_, _)
-1, 2, 3, 6, 7, 8, 9, 10, 13, 14,15, 17, 19, 20, 21, 23, 24, 25, 27, 28, 30, 31, 32, 33, 12, 16, 22, 29, 4, 5
+2, 5, 7, 10, 11, 14, 15
 5000
 1054-  comment
 assign a;  variable v;
 Select a pattern a(v, _)
-1, 2, 3, 6, 7, 8, 9, 10, 13, 14,15, 17, 19, 20, 21, 23, 24, 25, 27, 28, 30, 31, 32, 33, 12, 16, 22, 29, 4, 5
+2, 5, 7, 10, 11, 14, 15
 5000
 1055-  comment
 assign a;
-Select a pattern a("i", _"i"_)
-6, 14, 24, 31, 19, 9
+Select a pattern a("c", _"a"_)
+11, 14
 5000
 1056-  comment
 assign a;
-Select a pattern a("i", _)
-1, 6, 9, 10, 14, 19, 20, 24, 25, 31, 32
+Select a pattern a("a", _)
+5, 7
 5000
 1059-  comment
 assign a;
