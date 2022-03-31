@@ -1079,8 +1079,15 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 		//join instance table
 		tmpSize = queryCmd.tables.size() + 1;
 		//appendEntityTable("instance", {pattern_left}, queryCmd);
-		queryTable instanceTable = queryTable{ "instance", "t" + to_string(tmpSize), pattern_left };
-		queryCmd.tables.push_back(instanceTable);
+
+		queryTable instanceTable = findTable("alias", pattern_left, queryCmd);
+		if (instanceTable.tblAlias.empty())
+		{
+			instanceTable = queryTable{ "instance", "t" + to_string(tmpSize), pattern_left };
+			queryCmd.tables.push_back(instanceTable);
+		}
+
+		
 		queryCmd.connects.push_back(tblConnector{relnTblAlias, "instance__id", instanceTable.tblAlias, "_id"});
 
 		if (pattern_left.find("\"") != string::npos) // Left side is "string"

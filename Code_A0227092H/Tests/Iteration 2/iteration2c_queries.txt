@@ -205,31 +205,31 @@ Select a pattern a("a", _)
 5000
 1059-  comment
 assign a;
-Select a such that Parent(12, a) pattern a("i", _"i"_)
-none
+Select a such that Parent(4, a) pattern a("c", _"b"_)
+11, 14
 5000
 1060-  comment
 variable v; assign a, a1;
-Select v such that Modifies(a, v) pattern a1(v, _"i"_)
-i, y, z
+Select v such that Modifies(a, v) pattern a1(v, _"b"_)
+a, d, c, add
 5000
 1061-  comment
 variable v; assign a;
-Select a such that Uses(3, v) pattern a(v, _"i"_)
-6, 14, 24, 31, 19, 9
+Select a such that Uses(4, v) pattern a(v, _"b"_)
+5, 11, 14
 5000
 1062-  comment
 variable v; assign a, a1;
-Select v such that Modifies(a, v) pattern a1("z", _)
-i, x, y, z, bx
+Select v such that Modifies(a, v) pattern a1("negative", _)
+none
 5000
 1064-  comment
 stmt s; assign a;
-Select s such that Parent(s, _) pattern a(_, _"y"_)
-none
+Select s such that Parent(s, _) pattern a(_, _"b"_)
+4, 6, 8, 9, 12, 17
 5000
 1067-  comment
 print pn; variable v; assign a;
-Select v such that Uses(pn, v) pattern a("i", _"y"_)
-i
+Select v such that Uses(pn, v) pattern a("add", _"a"_)
+d, c, add, negative, positive
 5000
