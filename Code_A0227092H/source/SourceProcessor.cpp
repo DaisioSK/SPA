@@ -475,6 +475,7 @@ void SourceProcessor::callStmtHandler(string instName, int pcdID, int& line_no, 
 	//insert call reln and get id
 
 	//TODO: to allow upper/lower case - see queryprocessor lowercase() 
+	Database::insertStatement("call", line_no, line_no, pcdID, newID);
 	Database::insertCallReln(pcdID, instName);
 	line_no++;
 }

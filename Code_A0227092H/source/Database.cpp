@@ -563,8 +563,6 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				AND child__id IN (SELECT parent__id FROM reln_parent)\
 				)",1 });
 			}
-
-			
 		}
 	}
 

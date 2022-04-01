@@ -107,14 +107,16 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 	for (string query : queries) {
 
 		//init
-		lowercase(query);
+		//lowercase(query);
+		string query_lower = query;
+		transform(query_lower.begin(), query_lower.end(), query_lower.begin(), ::tolower);
 		if (query == "") continue;
 		//TODO: x and X cannnot be differentiated. fix it later
 
 		clean_query = split(query, ";").at(0);
 		tokens = split(clean_query, " ");
 
-		if (regex_match(query, expr_declare)) {
+		if (regex_match(query_lower, expr_declare)) {
 			cout << "find a declare query: " << query << endl;
 			
 			string type = tokens[0];
@@ -122,12 +124,12 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 			Database::appendEntityTable(type, tokens, queryCmd);
 		}
 
-		else if (regex_match(query, expr_select)) {
+		else if (regex_match(query_lower, expr_select)) {
 			cout << "find a select query: " << query << endl;
 
 			//parse the query into groups
-			string select_query = clean_query;
-			select_query = regex_replace(select_query, std::regex("\\s\*select\\s\*"), std::string("/pick/"));
+			string select_query = query;
+			select_query = regex_replace(select_query, std::regex("\\s\*Select\\s\*"), std::string("/pick/"));
 			select_query = regex_replace(select_query, std::regex("\\s\*such that\\s\*"), std::string("/cond/"));
 			select_query = regex_replace(select_query, std::regex("\\s\*pattern\\s\*"), std::string("/pattern/"));
 			vector<string> parts = split(select_query, std::string("/"));
