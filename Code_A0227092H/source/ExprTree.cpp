@@ -113,6 +113,7 @@ void mergeNode(Stack<string>& operators, Stack<Node*>& operands) {
 
 bool ExprTree::HasSubtree(Node* root1, Node* root2) {
 	if (root1 == NULL || root2 == NULL) return false;
+	if (root2->item == "") return true;
 	return judge(root1, root2);
 }
 

@@ -168,7 +168,6 @@ stmt s, s1;
 Select s1 such that Parent*(s, s1)
 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21
 5000
-5000
 1051-  comment
 stmt s;
 Select s such that Parent(s, _)
@@ -176,56 +175,56 @@ Select s such that Parent(s, _)
 5000
 1052-  comment
 assign a;
-Select a pattern a(_, _"i"_)
-6, 14, 17, 24, 31, 19, 21, 3, 9
+Select a pattern a(_, _"a"_)
+2, 6
 5000
 1053-  comment
 assign a;
 Select a pattern a(_, _)
-1, 2, 3, 6, 7, 8, 9, 10, 13, 14,15, 17, 19, 20, 21, 23, 24, 25, 27, 28, 30, 31, 32, 33, 12, 16, 22, 29, 4, 5
+2, 6, 10, 13, 14, 19
 5000
 1054-  comment
 assign a;  variable v;
 Select a pattern a(v, _)
-1, 2, 3, 6, 7, 8, 9, 10, 13, 14,15, 17, 19, 20, 21, 23, 24, 25, 27, 28, 30, 31, 32, 33, 12, 16, 22, 29, 4, 5
+2, 6, 10, 13, 14, 19
 5000
 1055-  comment
 assign a;
-Select a pattern a("i", _"i"_)
-6, 14, 24, 31, 19, 9
+Select a pattern a("test02", _"c"_)
+6
 5000
 1056-  comment
 assign a;
-Select a pattern a("i", _)
-1, 6, 9, 10, 14, 19, 20, 24, 25, 31, 32
+Select a pattern a("a", _)
+10, 13, 14
 5000
 1059-  comment
 assign a;
-Select a such that Parent(12, a) pattern a("i", _"i"_)
-none
+Select a such that Parent(4, a) pattern a("test02", _"a"_)
+6
 5000
 1060-  comment
 variable v; assign a, a1;
-Select v such that Modifies(a, v) pattern a1(v, _"i"_)
-i, y, z
+Select v such that Modifies(a, v) pattern a1(v, _"a"_)
+test001, test02
 5000
 1061-  comment
 variable v; assign a;
-Select a such that Uses(3, v) pattern a(v, _"i"_)
-6, 14, 24, 31, 19, 9
+Select a such that Uses(2, v) pattern a(v, _"c"_)
+10, 13, 14
 5000
 1062-  comment
 variable v; assign a, a1;
-Select v such that Modifies(a, v) pattern a1("z", _)
-i, x, y, z, bx
+Select v such that Modifies(a, v) pattern a1("a", _)
+test001, test02, a, test002
 5000
 1064-  comment
 stmt s; assign a;
-Select s such that Parent(s, _) pattern a(_, _"y"_)
+Select s such that Parent(s, _) pattern a(_, _"test001"_)
 none
 5000
 1067-  comment
 print pn; variable v; assign a;
-Select v such that Uses(pn, v) pattern a("i", _"y"_)
-i
+Select v such that Uses(pn, v) pattern a("test001", _"a"_)
+code9, b, coding7, test001, a
 5000

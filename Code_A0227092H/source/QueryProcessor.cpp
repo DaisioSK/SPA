@@ -116,13 +116,7 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 
 		if (regex_match(query, expr_declare)) {
 			cout << "find a declare query: " << query << endl;
-
-			//queryItem queryItem;
-			//Database::buildQueryItem(tokens[0], tokens[1], queryItem);
-			//queryCmd.selections.push_back(queryItem);
-
 			
-			//Database::appendEntityTable(tokens[0], tokens[1], queryCmd);
 			string type = tokens[0];
 			tokens.erase(tokens.begin());
 			Database::appendEntityTable(type, tokens, queryCmd);
@@ -158,26 +152,6 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 
 	vector<vector<string>> databaseResults;
 	Database::queryCmdToResult(databaseResults, queryCmd);
-
-	////the old way
-	//// tokenize the query
-	//Tokenizer tk;
-	//vector<string> tokens;
-	//tk.tokenize(query, tokens);
-
-	//// check what type of synonym is being declared
-	//string synonymType = tokens.at(0);
-
-	//// create a vector for storing the results from database
-	//vector<string> databaseResults;
-
-	//// call the method in database to retrieve the results
-	//// This logic is highly simplified based on iteration 1 requirements and 
-	//// the assumption that the queries are valid.
-	//if (synonymType == "procedure") {
-	//	Database::getProcedures(databaseResults);
-	//}
-
 
 	// post process the results to fill in the output vector
 	for (vector<string> row : databaseResults) {
