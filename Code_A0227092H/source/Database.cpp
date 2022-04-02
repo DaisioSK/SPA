@@ -167,10 +167,11 @@ void Database::appendQueryCond(string& queryString, vector<queryCond> queryConds
 }
 
 //method to insert a parent relationship
-void Database::insertParentReln(int parent__id, int child__id) {
-	string sql = "INSERT INTO reln_parent (parent__id, child__id) VALUES (";
+void Database::insertParentReln(int parent__id, int child__id, int level) {
+	string sql = "INSERT INTO reln_parent (parent__id, child__id, level) VALUES (";
 	sql.append("'" + to_string(parent__id) + "', ");
-	sql.append("'" + to_string(child__id) + "');");
+	sql.append("'" + to_string(child__id) + "', ");
+	sql.append("'" + to_string(level) + "');");
 
 	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
 }
@@ -515,23 +516,31 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 	}
 	else if (relnType == "parent") {
 
-		//left side: stmt (line no / alias)
+		//left side: stmt (line no / alias / _)
 		queryTable leftStmtTable;
 		if (is_number(itemLeft)) {
 			leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
 			queryCmd.tables.push_back(leftStmtTable);
 			queryCmd.conditions.push_back({ "AND",leftStmtTable.tblAlias + ".line_sno",itemLeft,0 });
 		}
+		else if (itemLeft == "_") {
+			leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(leftStmtTable);
+		}
 		else {
 			leftStmtTable = findTable("alias", itemLeft, queryCmd);
 		}
 
-		//right side: stmt (line no / alias)
+		//right side: stmt (line no / alias / _)
 		queryTable rightStmtTable;
 		if (is_number(itemRight)) {
 			rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
 			queryCmd.tables.push_back(rightStmtTable);
 			queryCmd.conditions.push_back({ "AND",rightStmtTable.tblAlias + ".line_sno",itemRight,0 });
+		}
+		else if (itemRight == "_") {
+			rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(rightStmtTable);
 		}
 		else {
 			rightStmtTable = findTable("alias", itemRight, queryCmd);
@@ -550,21 +559,22 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		//recursive condition
 		if (!is_recursive_reln) {
 
-			if (!rightStmtTable.tblAlias.empty())
-			{
-				queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
-				SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
-				AND child__id IN (SELECT parent__id FROM reln_parent WHERE child__id = " + rightStmtTable.tblAlias + "._id)\
-				)",1 });
-			}
-			else {
-				queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
-				SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
-				AND child__id IN (SELECT parent__id FROM reln_parent)\
-				)",1 });
-			}
+			queryCmd.conditions.push_back({ "AND",parentTable.tblAlias + ".level","1",0});
 
-			
+			//if (!rightStmtTable.tblAlias.empty())
+			//{
+			//	queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
+			//	SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
+			//	AND child__id IN (SELECT parent__id FROM reln_parent WHERE child__id = " + rightStmtTable.tblAlias + "._id)\
+			//	)",1 });
+			//}
+			//else {
+			//	queryCmd.conditions.push_back({ "","","AND NOT EXISTS(\
+			//	SELECT * FROM reln_parent WHERE parent__id = " + leftStmtTable.tblAlias + "._id\
+			//	AND child__id IN (SELECT parent__id FROM reln_parent)\
+			//	)",1 });
+			//}
+
 		}
 	}
 
@@ -1109,12 +1119,11 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 	string clean_pattern_right = regex_replace(pattern_right, std::regex("\[_\\s\"\]"), std::string(""));
 	if (clean_pattern_right != "") {
 		ExprTree::exprStrToNode(clean_pattern_right, n);
-		patterns.push_back(queryPattern{ ptn_index, n, openLeft, openRight });
 	}
 	else {
-		Node n = Node{"", 0, NULL, NULL};
-		patterns.push_back(queryPattern{ ptn_index, n, openLeft, openRight });
+		n = Node{"", 0, NULL, NULL};
 	}
+	patterns.push_back(queryPattern{ ptn_index, n, openLeft, openRight });
 
 	//after query the results, need to loop the result and do tree mapping
 }
