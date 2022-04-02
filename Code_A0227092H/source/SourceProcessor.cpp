@@ -252,11 +252,8 @@ void SourceProcessor::process(string program) {
 
 		// else statement
 		else if (regex_match(line, expr_else)) {
-			//TODO: add else stmt record
 			
 			cout << "line " << line_no - 1 << " is a else statement: " << line << ", id is " << newID << endl;
-
-			//brackets.push_back(bracketInfo{ "else", newID });
 
 			ifBranchEndIDs.push_back(newID);
 
@@ -267,11 +264,13 @@ void SourceProcessor::process(string program) {
 		}
 
 		// call statement
-		else if (regex_match(line, expr_call)) {\
+		else if (regex_match(line, expr_call)) {
+			cout << "line " << line_no - 1 << " is a call statement: " << line << ", id is " << newID << endl;
+
 			tokens = split(clean_line, "call", false);
 
 			callStmtHandler(tokens[0], pcdID, line_no, newID);
-			cout << "line " << line_no - 1 << " is a call statement: " << line << ", id is " << newID << endl;
+			parentRelnHander(brackets, newID);
 		}
 
 		else if (regex_match(line, expr_close)) {
@@ -477,6 +476,7 @@ void SourceProcessor::callStmtHandler(string instName, int pcdID, int& line_no, 
 	//insert call reln and get id
 
 	//TODO: to allow upper/lower case - see queryprocessor lowercase() 
+	Database::insertStatement("call", line_no, line_no, pcdID, newID);
 	Database::insertCallReln(pcdID, instName);
 	line_no++;
 }

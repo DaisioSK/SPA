@@ -102,19 +102,21 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 	//such that Parent* (w2, a2) such that Parent* (w1, w2)
 
 	std::regex expr_select("\^\\s\*select\.\*\$", std::regex_constants::icase);
-	std::regex expr_declare("\^\\s\*\(procedure\|variable\|constant\|stmt\|while\|assign\|read\|print\|if\)\\s\*\[a-z0-9\\s\,]\+\$", std::regex_constants::icase);
+	std::regex expr_declare("\^\\s\*\(procedure\|variable\|constant\|stmt\|while\|assign\|read\|print\|if\|call\)\\s\*\[a-z0-9\\s\,]\+\$", std::regex_constants::icase);
 
 	for (string query : queries) {
 
 		//init
-		lowercase(query);
+		//lowercase(query);
+		string query_lower = query;
+		transform(query_lower.begin(), query_lower.end(), query_lower.begin(), ::tolower);
 		if (query == "") continue;
 		//TODO: x and X cannnot be differentiated. fix it later
 
 		clean_query = split(query, ";").at(0);
 		tokens = split(clean_query, " ");
 
-		if (regex_match(query, expr_declare)) {
+		if (regex_match(query_lower, expr_declare)) {
 			cout << "find a declare query: " << query << endl;
 			
 			string type = tokens[0];
@@ -122,12 +124,12 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 			Database::appendEntityTable(type, tokens, queryCmd);
 		}
 
-		else if (regex_match(query, expr_select)) {
+		else if (regex_match(query_lower, expr_select)) {
 			cout << "find a select query: " << query << endl;
 
 			//parse the query into groups
-			string select_query = clean_query;
-			select_query = regex_replace(select_query, std::regex("\\s\*select\\s\*"), std::string("/pick/"));
+			string select_query = query;
+			select_query = regex_replace(select_query, std::regex("\\s\*Select\\s\*"), std::string("/pick/"));
 			select_query = regex_replace(select_query, std::regex("\\s\*such that\\s\*"), std::string("/cond/"));
 			select_query = regex_replace(select_query, std::regex("\\s\*pattern\\s\*"), std::string("/pattern/"));
 			vector<string> parts = split(select_query, std::string("/"));
