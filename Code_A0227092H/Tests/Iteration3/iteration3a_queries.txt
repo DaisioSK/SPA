@@ -141,7 +141,7 @@ flag, cenX, cenY, normSq
 1201-  Section 2 Use
 stmt s; variable v;
 Select s such that Uses(s, v)
-6, 7, 8, 9, 14, 15, 16, 17, 19, 21, 22, 23, 2, 3, 18
+6, 7, 8, 9, 14, 15, 16, 17, 19, 21, 22, 23, 2, 3
 5000
 1202-  Section 2 Use
 stmt s; variable v;
@@ -151,7 +151,7 @@ flag, cenX, cenY, normSq, count, x, y
 1203-  Section 2 Use
 stmt s; 
 Select s such that Uses(s, _)
-6, 7, 8, 9, 14, 15, 16, 17, 19, 21, 22, 23, 2, 3, 18
+6, 7, 8, 9, 14, 15, 16, 17, 19, 21, 22, 23, 2, 3
 5000
 1204-  Section 2 Use
 stmt s; 
@@ -201,42 +201,42 @@ flag, cenX, cenY, normSq, count, x, y
 1213-  Section 2 Use
 if ifs; variable v;
 Select ifs such that Uses(ifs, v)
-none
+19
 5000
 1214-  Section 2 Use
 if ifs; variable v;
 Select v such that Uses(ifs, v)
-none
+count, cenX, cenY
 5000
 1215-  Section 2 Use
 while w; variable v;
 Select w such that Uses(w, v)
-none
+14
 5000
 1215-  Section 2 Use
 while w; variable v;
 Select v such that Uses(w, v)
-none
+x, y, count, cenX, cenY
 5000
 1216-  Section 2 Use
 if ifs;
 Select ifs such that Uses(ifs, _)
-none
+19
 5000
 1217-  Section 2 Use
 while w;
 Select w such that Uses(w, _)
-none
+14
 5000
 1217-  Section 2 Use
 call c;
 Select c such that Uses(c, _)
-2, 13, 18
+2, 3
 5000
 1218-  Section 2 Use
 call c; variable v;
 Select c such that Uses(c, v)
-2, 13, 18
+2, 3
 5000
 1219-  Section 2 Use
 call c; variable v;
