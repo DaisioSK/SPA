@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS reln_parent;
 CREATE TABLE reln_parent (
     parent__id INTEGER REFERENCES stmt(`_id`),
     child__id INTEGER REFERENCES stmt(`_id`),
+    level TINYINT DEFAULT 1,
     PRIMARY KEY (parent__id, child__id)
 );
 

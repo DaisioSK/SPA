@@ -98,7 +98,7 @@ public:
 	static void insertInstance(string type, string name, int pcd__id, int& newID);
 
 	//method to insert a parent relationship
-	static void insertParentReln(int parent__id, int child__id);
+	static void insertParentReln(int parent__id, int child__id, int level);
 
 	//method to insert a modify relationship
 	static void insertModifyReln(int stmt__id, int instance__id, string expression);
