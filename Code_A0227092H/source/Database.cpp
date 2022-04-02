@@ -681,7 +681,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 	else if (relnType == "calls") {
 		//iteration 3
 
-		int tmpSize = 1;
+		int tmpSize = findTableNum(queryCmd);
 
 		/* Case 1
 		
@@ -732,7 +732,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
 			
 				if (is_recursive_reln) {
-					queryCmd.conditions.push_back(queryCond{ "", "","AND t3.name IN GETID", 1 });
+					queryCmd.conditions.push_back(queryCond{ "", "","AND " + pcdCalleeTable.tblAlias + ".name IN GETID", 1 });
 					queryCmd.recursivePrefix = "WITH RECURSIVE GETID(N) AS (\
 												VALUES('"+ itemRight.substr(1, itemRight.size() - 2) +"')\
 												UNION\
@@ -800,7 +800,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
 			
 				if (is_recursive_reln) {
-					queryCmd.conditions.push_back(queryCond{ "", "", "AND t3.name IN GETID", 1 });
+					queryCmd.conditions.push_back(queryCond{ "", "", "AND " + pcdCallerTable.tblAlias + ".name IN GETID", 1 });
 					queryCmd.recursivePrefix = "WITH RECURSIVE GETID(N) AS (\
 												VALUES('"+ itemLeft.substr(1, itemLeft.size() - 2) +"')\
 												UNION\
@@ -855,17 +855,29 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 						AND t2.callee__id = t3._id )";
 			}
 			else {
-				queryTable pcdCallerTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "p" };
+				
 				queryTable relnCallTable = queryTable{ "reln_call", "t" + to_string(tmpSize++), "" };
-				queryTable pcdCalleeTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "q" };
+				queryTable pcdCallerTable = findTable("alias", itemLeft, queryCmd);
+				queryTable pcdCalleeTable = findTable("alias", itemRight, queryCmd);
+
+				if (pcdCallerTable.tblAlias.empty())
+				{
+					queryTable pcdCallerTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "p" };
+					queryCmd.tables.push_back(pcdCallerTable);
+				}
+
+				if (pcdCalleeTable.tblAlias.empty())
+				{
+					queryTable pcdCalleeTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "q" };
+					queryCmd.tables.push_back(pcdCalleeTable);
+				}
+
 				queryItem callerItem = queryItem{pcdCallerTable.tblAlias, "name"};
 				queryItem calleeItem = queryItem{ pcdCalleeTable.tblAlias, "name" };
 
 				queryCmd.selections.push_back(callerItem);
 				queryCmd.selections.push_back(calleeItem);
-				queryCmd.tables.push_back(pcdCallerTable);
 				queryCmd.tables.push_back(relnCallTable);
-				queryCmd.tables.push_back(pcdCalleeTable);
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
 			}

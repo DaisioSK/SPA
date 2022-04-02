@@ -102,7 +102,7 @@ void QueryProcessor::evaluate(string query, vector<string>& output) {
 	//such that Parent* (w2, a2) such that Parent* (w1, w2)
 
 	std::regex expr_select("\^\\s\*select\.\*\$", std::regex_constants::icase);
-	std::regex expr_declare("\^\\s\*\(procedure\|variable\|constant\|stmt\|while\|assign\|read\|print\|if\)\\s\*\[a-z0-9\\s\,]\+\$", std::regex_constants::icase);
+	std::regex expr_declare("\^\\s\*\(procedure\|variable\|constant\|stmt\|while\|assign\|read\|print\|if\|call\)\\s\*\[a-z0-9\\s\,]\+\$", std::regex_constants::icase);
 
 	for (string query : queries) {
 
