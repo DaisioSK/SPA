@@ -1,0 +1,76 @@
+DROP TABLE IF EXISTS stmt;
+CREATE TABLE stmt(
+    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type VARCHAR(255) NOT NULL,
+    line_sno INTEGER DEFAULT NULL,
+    line_eno INTEGER DEFAULT NULL,
+    pcd__id INTEGER REFERENCES pcd(`_id`)
+);
+
+DROP TABLE IF EXISTS pcd;
+CREATE TABLE pcd(
+    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL,
+    line_sno INTEGER DEFAULT NULL,
+    line_eno INTEGER DEFAULT NULL
+);
+
+DROP TABLE IF EXISTS instance;
+CREATE TABLE instance(
+    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    pcd__id INTEGER REFERENCES pcd(`_id`)
+);
+
+DROP TABLE IF EXISTS reln_parent;
+CREATE TABLE reln_parent (
+    parent__id INTEGER REFERENCES stmt(`_id`),
+    child__id INTEGER REFERENCES stmt(`_id`),
+    level TINYINT DEFAULT 1,
+    PRIMARY KEY (parent__id, child__id)
+);
+
+DROP TABLE IF EXISTS reln_modify;
+CREATE TABLE reln_modify (
+    stmt__id INTEGER REFERENCES stmt(`_id`),
+    instance__id INTEGER REFERENCES instance(`_id`),
+    expr VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (stmt__id, instance__id)
+);
+
+DROP TABLE IF EXISTS reln_use;
+CREATE TABLE reln_use (
+    stmt__id INTEGER REFERENCES stmt(`_id`),
+    instance__id INTEGER REFERENCES instance(`_id`),
+    PRIMARY KEY (stmt__id, instance__id)
+);
+
+DROP TABLE IF EXISTS reln_call;
+CREATE TABLE reln_call (
+    caller__id INTEGER REFERENCES stmt(`_id`),
+    callee__id INTEGER REFERENCES pcd(`_id`),
+    PRIMARY KEY (caller__id, callee__id)
+);
+
+DROP TABLE IF EXISTS reln_next;
+CREATE TABLE reln_next (
+    stmt__id INTEGER REFERENCES stmt(`_id`),
+    next_stmt__id INTEGER REFERENCES stmt(`_id`),
+    PRIMARY KEY (stmt__id, next_stmt__id)
+);
+
+DROP TABLE IF EXISTS reln_use_pcd;
+CREATE TABLE reln_use_pcd (
+    pcd__id INTEGER REFERENCES pcd(`_id`),
+    instance__id INTEGER REFERENCES instance(`_id`),
+    PRIMARY KEY (pcd__id, instance__id)
+);
+
+DROP TABLE IF EXISTS reln_modify_pcd;
+CREATE TABLE reln_modify_pcd (
+    pcd__id INTEGER REFERENCES pcd(`_id`),
+    instance__id INTEGER REFERENCES instance(`_id`),
+    expr VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (pcd__id, instance__id, expr)
+);

@@ -220,6 +220,7 @@ void SourceProcessor::process(string program) {
 
 			whileStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no -1  << " is a while statement: " << line << ", id is " << newID << endl;
+			parentRelnHander(brackets, newID);
 
 			brackets.push_back(bracketInfo{ "while", newID });
 
@@ -237,6 +238,7 @@ void SourceProcessor::process(string program) {
 
 			ifStmtHandler(tokens, pcdID, line_no, newID);
 			cout << "line " << line_no - 1 << " is a if statement: " << line << ", id is " << newID << endl;
+			parentRelnHander(brackets, newID);
 
 			brackets.push_back(bracketInfo{ "if", newID });
 
@@ -533,10 +535,18 @@ void SourceProcessor::ifStmtHandler(vector<string> tokens, int pcdID, int& line_
 void SourceProcessor::parentRelnHander(vector<bracketInfo> brackets, int newID) {
 	if (!brackets.empty())
 	{
+		int level = 0;
 		for (bracketInfo currentBracket : brackets) {
 			if (currentBracket.type == "while" || currentBracket.type == "if")
 			{
-				Database::insertParentReln(currentBracket.db_id, newID);
+				level++;
+			}
+		}
+		for (bracketInfo currentBracket : brackets) {
+			if (currentBracket.type == "while" || currentBracket.type == "if")
+			{
+				Database::insertParentReln(currentBracket.db_id, newID, level);
+				level--;
 			}
 		}
 		//bracketInfo currentBracket = brackets.back();
