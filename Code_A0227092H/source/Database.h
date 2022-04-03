@@ -139,6 +139,9 @@ public:
 	// method to update a procedure into the database
 	static void updateStmt(int id, int line_eno);
 
+	static void updateCallRelnTbls(string caller_name, string callee_name, int stmt_id);
+
+	static void updateParentRelnTbls(int parent_id, int child_id);
 
 	/**
 		query parser

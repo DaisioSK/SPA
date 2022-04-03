@@ -133,6 +133,10 @@ void SourceProcessor::process(string program) {
 	vector<string> tokens;
 	vector<bracketInfo> brackets;
 	vector<int> ifBranchEndIDs;
+	vector<callReln> callRelnArr; // save caller-callee pair
+	vector<parentReln> parentRelnArr; // save parent-child pair
+	vector<int> parentIdArr; // save current parent reln depth
+	string currentPcd;
 	string clean_line;
 	int line_no = 1;
 	int newID = 0;
@@ -147,18 +151,19 @@ void SourceProcessor::process(string program) {
 		//init
 		clean_line = trim(line, NULL);
 		line = trim(line, '\t');
-		//clean_line = split(line, ";").at(0);
-		//tokens = split(line, " ");
 
+		//procedure 
 		if (regex_match(line, expr_pcd)) {
 			clean_line = trim(clean_line, '{');
 			tokens = split(clean_line, "procedure", false); // {"proc_name"};
 
-			Database::insertProcedure(tokens[0], line_no+1, newID);
+			Database::insertProcedure(tokens[0], line_no, newID);
 			pcdID = newID;
 			cout << "find a procedure here: " << line << ", id is " << newID << endl;
 
 			brackets.push_back({ "pcd", pcdID });
+			currentPcd = tokens[0];
+			parentIdArr.clear();
 		}
 
 		//read statement
@@ -229,6 +234,7 @@ void SourceProcessor::process(string program) {
 				ifBranchEndIDs.pop_back();
 				flagIfEnd = 0;
 			}
+			parentIdArr.push_back(newID);
 		}
 
 		// if statement
@@ -247,6 +253,7 @@ void SourceProcessor::process(string program) {
 				ifBranchEndIDs.pop_back();
 				flagIfEnd = 0;
 			}
+			parentIdArr.push_back(newID);
 		}
 
 		// else statement
@@ -264,12 +271,30 @@ void SourceProcessor::process(string program) {
 
 		// call statement
 		else if (regex_match(line, expr_call)) {
-			cout << "line " << line_no - 1 << " is a call statement: " << line << ", id is " << newID << endl;
 
 			tokens = split(clean_line, "call", false);
 
 			callStmtHandler(tokens[0], pcdID, line_no, newID);
 			parentRelnHander(brackets, newID);
+
+			cout << "line " << line_no - 1 << " is a call statement: " << line << ", id is " << newID << endl;
+
+			//update callRelnArr
+			callRelnArr.push_back(callReln{currentPcd, tokens[0], newID});
+			for (int i = 0; i < callRelnArr.size(); i++)
+			{
+				callReln reln = callRelnArr.at(i);
+				if (reln.callee_name == currentPcd)
+				{
+					callRelnArr.push_back(callReln{reln.caller_name, tokens[0], newID});
+				}
+			}
+
+			for (int i = 0; i < parentIdArr.size(); i++)
+			{
+				parentRelnArr.push_back(parentReln{parentIdArr[i], newID});
+			}
+
 		}
 
 		else if (regex_match(line, expr_close)) {
@@ -280,7 +305,7 @@ void SourceProcessor::process(string program) {
 
 				if (currentBracket.type == "pcd")
 				{
-					Database::updateProcedure(pcdID, line_no);
+					Database::updateProcedure(pcdID, line_no - 1);
 				}
 				else if (currentBracket.type == "while") 
 				{
@@ -293,31 +318,19 @@ void SourceProcessor::process(string program) {
 					flagIfEnd = 1;
 				}
 
+				if (!parentIdArr.empty())
+				{
+					parentIdArr.pop_back();
+				}
+
 				brackets.pop_back();
 			}
 		}
 	}
 
+	updateCallRelnTables(callRelnArr, parentRelnArr);
+
 	cout << endl << endl;
-
-
-	//old way not good :(
-	// 
-	//// tokenize the program
-	//Tokenizer tk;
-	//vector<string> tokens;
-	//tk.tokenize(program, tokens);
-
-	//// This logic is highly simplified based on iteration 1 requirements and 
-	//// the assumption that the programs are valid.
-	//string procedureName = tokens.at(1);
-
-	//// insert the procedure into the database
-	//Database::insertProcedure(procedureName);
-
-	//vector<string> lines = split(program, "\n");
-
-
 }
 
 void SourceProcessor::printStmtHandler(string instName, vector<bracketInfo> brackets, int pcdID, int& line_no, int& newID) {
@@ -575,9 +588,56 @@ int SourceProcessor::getInstID(string name, int pcdID, string type) {
 	return instID;
 }
 
-static void lowercase(string& str) {
+void SourceProcessor::lowercase(string& str) {
 	std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {
 		return std::tolower(c);
 	});
+}
+
+void SourceProcessor::updateCallRelnTables(vector<callReln> callRelnArr, vector<parentReln> parentRelnArr) {
+
+	vector<vector<string>> depthArr;
+	for (int i = 0; i < callRelnArr.size(); i++)
+	{
+		callReln reln = callRelnArr.at(i);
+		bool found = false;
+		for (int j = 0; j < depthArr.size(); j++)
+		{
+			if (depthArr[j].back() == reln.caller_name)
+			{
+				depthArr[j].push_back(reln.callee_name);
+			}
+		}
+
+		if (!found)
+		{
+			depthArr.push_back({ reln.caller_name, reln.callee_name });
+		}
+	}
+
+	int round = 0;
+	for (int i = 0; i < depthArr.size(); i++)
+	{
+		if (depthArr[i].size() > round)
+		{
+			round = depthArr[i].size();
+		}
+	}
+
+	// loop until all call/parent reln are inserted
+	for (int i = 1; i < round; i++)
+	{
+		for (int i = 0; i < callRelnArr.size(); i++)
+		{
+			callReln reln = callRelnArr.at(i);
+			Database::updateCallRelnTbls(reln.caller_name, reln.callee_name, reln.stmt_id);
+		}
+
+		for (int i = 0; i < parentRelnArr.size(); i++)
+		{
+			parentReln reln = parentRelnArr.at(i);
+			Database::updateParentRelnTbls(reln.parent_id, reln.child_id);
+		}
+	}
 }
 
