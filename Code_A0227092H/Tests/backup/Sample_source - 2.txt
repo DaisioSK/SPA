@@ -1,0 +1,16 @@
+procedure second { 
+    x = 0;
+    i = 5;
+    while (i > 1) {
+        x = x + 2 * y;
+        i = i - 1; 
+    }
+    if (x > 0) then {
+        x = x + 1; 
+    } else {
+        z = 1; 
+    }
+    z = z + x + i;
+    y = z + 2;
+    x = x * y + z;
+}

@@ -1,0 +1,125 @@
+1 - Parent(1) // select stmt that is child of stmt 3
+stmt s;
+Select s such that Parent(3, s)
+none
+5000
+2 - Parent(2) //select stmt that is parent of stmt 5
+stmt s;
+Select s such that Parent(s, 5)
+4
+5000
+3 - Parent(3) // select the assgin stmt that is under any if loop
+assign a; if w;
+Select a such that Parent*(w, a)
+7, 8
+5000
+4 - Uses(1) //select assign stmt that uses z
+assign a;
+Select a such that Uses(a, "z")
+2, 5, 7
+5000
+5 - Uses(2) // select assign stmt that uses v
+assign a;
+Select a such that Uses(a, "v")
+8, 9
+5000
+6 - Uses(3) // select variable that stmt 8 is using
+variable v;
+Select v such that Uses(8, v)
+v, w
+5000
+7 - Modify(1) // select assign stmt that modifies z
+assign a;
+Select a such that Modifies(a, "z")
+7, 8
+5000
+8 - Modify(2) // select assign stmt that modifies v
+assign a;
+Select a such that Modifies(a, "v")
+2, 5
+5000
+9 - Modify(3) //  select assign stmt that modifies w
+assign a;
+Select a such that Modifies(a, "w")
+3
+5000
+10 - Next(1) // select stmt that is immediately after stmt 1
+stmt s;
+Select s such that Next(1, s)
+2
+5000
+11 - Next(2) // select all stmts that is possiblely after stmt 6
+stmt s;
+Select s such that Next*(6, s)
+7, 8, 9
+5000
+12 - Next(3) // select stmt that is immediately after stmt 3
+stmt s;
+Select s such that Next(3, s)
+4
+5000
+13 - Pattern(1) // select assign stmt that contain sub expression "z + 1"
+assign a;
+Select a pattern a (_, _"z + 1"_);
+5, 7
+5000
+14 - Pattern(2) // select assign stmt that contain sub expression "v"
+assign a;
+Select a pattern a (_, _"v"_);
+8
+5000
+15 - Pattern(3) // select assign stmt that contain sub expression "z + v"
+assign a;
+Select a pattern a (_, _"z + y"_);
+none
+5000
+16 - Combination(1) // select stmt that is child of stmt 6 and contains sub expression "w * 2"
+stmt s;
+Select s such that Parent(6, s) pattern s (_, _"w * 2"_)
+8
+5000
+17 - Combination(2) // select stmt that is child of stmt 6 and contains sub expression "v + 1"
+stmt s;
+Select s such that Parent(6, s) pattern s (_, _"v + 1"_)
+none
+5000
+18 - Combination(3) // select assgin stmt that uses z and contains sub expression "z + 1"
+assign a;
+Select a such that Uses(a, "z") pattern a (_, _"z + 1"_)
+5, 7
+5000
+19 - Combination(4) // select assgin stmt that uses v and contains sub expression "x + 1"
+assign a;
+Select a such that Uses(a, "v") pattern a (_, _"x + 1"_)
+none
+5000
+20 - Combination(5) // select assgin stmt that modifies v and contains sub expression "z * z"
+assign a;
+Select a such that Modifies(a, "v") pattern a (_, _"z * z"_)
+2
+5000
+20 - Combination(6) // select assgin stmt that modifies w and contains sub expression "z * z"
+assign a;
+Select a such that Modifies(a, "w") pattern a (_, _"z * z"_)
+none
+5000
+21 - Combination(7) // select stmt that is after stmt 6 and contains sub expression "2"
+stmt s;
+Select s such that Next*(6, s) pattern s (_, _"2"_)
+8
+5000
+22 - Combination(8) // select stmt that is after stmt 6 and contains sub expression "1"
+stmt s;
+Select s such that Next(6, s) pattern s (_, _"1"_)
+7
+5000
+23 - Combination(9) // select the assgin stmt that is under any while loop and contains sub expression "z + 1"
+assign a; while w;
+Select a such that Parent*(w, a) pattern a (_, _"z + 1"_)
+5
+5000
+24 - Combination(10) // select the assgin stmt that is under stmt 1 and contains sub expression "w"
+stmt s;
+Select s such that Next(1, s) pattern s (_, _"w"_)
+none
+5000
