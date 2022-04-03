@@ -285,7 +285,7 @@ void Database::getInstance(vector<string>& results, vector<queryCond> queryConds
 void Database::appendQueryCond(string& queryString, vector<queryCond> queryConds) {
 	for (queryCond q : queryConds) {
 		if (q.customText)
-			queryString.append(trim(q.value) + "\n");
+			queryString.append(q.value + "\n");
 		else
 			queryString.append(q.joinType + " " + q.key + " = '" + q.value + "'\n");
 	}
@@ -587,6 +587,10 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				queryCmd.tables.push_back(leftStmtTable);
 				queryCmd.conditions.push_back({ "AND",leftStmtTable.tblAlias + ".line_sno",itemLeft,0 });
 			}
+			else if (itemLeft == "_") {
+				leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(leftStmtTable);
+			}
 			else {
 				leftStmtTable = findTable("alias", itemLeft, queryCmd);
 			}
@@ -597,6 +601,10 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
 				queryCmd.tables.push_back(rightStmtTable);
 				queryCmd.conditions.push_back({ "AND",rightStmtTable.tblAlias + ".line_sno",itemRight,0 });
+			}
+			else if (itemRight == "_") {
+				rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(rightStmtTable);
 			}
 			else {
 				rightStmtTable = findTable("alias", itemRight, queryCmd);
@@ -622,6 +630,10 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				queryCmd.tables.push_back(leftStmtTable);
 				queryCmd.conditions.push_back({ "AND",leftStmtTable.tblAlias + ".line_sno",itemLeft,0 });
 			}
+			else if (itemLeft == "_") {
+				leftStmtTable = { "stmt", "t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(leftStmtTable);
+			}
 			else {
 				leftStmtTable = findTable("alias", itemLeft, queryCmd);
 			}
@@ -633,6 +645,10 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
 				queryCmd.tables.push_back(rightStmtTable);
 				queryCmd.conditions.push_back({ "AND",rightStmtTable.tblAlias + ".line_sno",itemRight,0 });
+			}
+			else if (itemRight == "_") {
+				rightStmtTable = { "stmt","t" + to_string(++tmpSize), "" };
+				queryCmd.tables.push_back(rightStmtTable);
 			}
 			else {
 				rightStmtTable = findTable("alias", itemRight, queryCmd);
@@ -1165,41 +1181,72 @@ static bool isSubArray(vector<int> parent, vector<int> child)
 	return false;
 }
 
-
 bool Database::findNextReln(int prevID, int nextID) {
-	if (!routes.size()) initRoutes();
-	vector<int> queue;
-	vector<int> visited;
-	vector<int>::iterator ip;
-	
-	for (int stmtID : routes[prevID]) {
-		if (stmtID == nextID) return true;
-		else {
-			queue.push_back(stmtID);
-		}
+	//--next* (18, s)
+	//	WITH RECURSIVE GETID(N) AS(
+	//		VALUES('18')
+	//		UNION
+	//		SELECT bottom._id
+	//		FROM reln_next, GETID, stmt top, stmt bottom
+	//		WHERE top._id = reln_next.stmt__id AND bottom._id = reln_next.next_stmt__id AND top._id = GETID.N)
+	//	SELECT* FROM GETID
+
+	if (prevID == nextID) return false;
+	dbResults.clear();
+
+	string sql = "WITH RECURSIVE GETID(N) AS(\
+		VALUES('"+ to_string(prevID) +"')\
+		UNION\
+		SELECT bottom._id\
+		FROM reln_next, GETID, stmt top, stmt bottom\
+		WHERE top._id = reln_next.stmt__id AND bottom._id = reln_next.next_stmt__id AND top._id = GETID.N)\
+		SELECT* FROM GETID";
+	sqlite3_exec(dbConnection, sql.c_str(), callback, 0, &errorMessage);
+
+	for (vector<string> row : dbResults) {
+		if (std::find(row.begin(), row.end(), to_string(nextID)) != row.end())
+			return true;
 	}
-
-	int index = 0;
-	while (!isSubArray(visited, queue)) {
-		if (std::find(visited.begin(), visited.end(), queue[index]) == visited.end()) goto nxt;
-		for (int stmtID : routes[queue[index]]) {
-			if (stmtID == nextID) return true;
-			else {
-				queue.push_back(stmtID);
-			}
-		}
-
-		//unique the queue
-		ip = std::unique(queue.begin(), queue.end());
-		queue.resize(std::distance(queue.begin(), ip));
-
-		nxt:
-		visited.push_back(queue[index]);
-		index++;
-	}
-
 	return false;
+
 }
+
+
+//bool Database::findNextReln(int prevID, int nextID) {
+//	if (!routes.size()) initRoutes();
+//	vector<int> queue;
+//	vector<int> visited;
+//	vector<int>::iterator ip;
+//	
+//	if (routes[prevID].empty()) return false;
+//	for (int stmtID : routes[prevID]) {
+//		if (stmtID == nextID) return true;
+//		else {
+//			queue.push_back(stmtID);
+//		}
+//	}
+//
+//	int index = 0;
+//	while (!isSubArray(visited, queue)) {
+//		if (std::find(visited.begin(), visited.end(), queue[index]) == visited.end()) goto nxt;
+//		for (int stmtID : routes[queue[index]]) {
+//			if (stmtID == nextID) return true;
+//			else {
+//				queue.push_back(stmtID);
+//			}
+//		}
+//
+//		//unique the queue
+//		ip = std::unique(queue.begin(), queue.end());
+//		queue.resize(std::distance(queue.begin(), ip));
+//
+//		nxt:
+//		visited.push_back(queue[index]);
+//		index++;
+//	}
+//
+//	return false;
+//}
 
 string Database::getPatternString(string str) {
 	std::regex expr_pattern("_\?\"\[a-zA-z0-9\\s\+\-\\/\\*%\\(\\)\]\+\"_\?");

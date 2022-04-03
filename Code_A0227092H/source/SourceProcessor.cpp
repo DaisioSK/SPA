@@ -311,6 +311,7 @@ void SourceProcessor::process(string program) {
 				{
 					Database::updateStmt(currentBracket.db_id, line_no);
 					Database::insertNextReln(newID, currentBracket.db_id);
+					Database::insertNextReln(currentBracket.db_id, newID+1);
 				}
 				else if (currentBracket.type == "if") 
 				{
@@ -382,7 +383,7 @@ void SourceProcessor::readStmtHandler(string instName, vector<bracketInfo> brack
 	}
 
 	//insert next reln record
-	if (oldID > 0) Database::insertNextReln(oldID, newID);
+	if (oldID > 0 && oldID != newID) Database::insertNextReln(oldID, newID);
 
 	line_no++;
 }
@@ -478,17 +479,21 @@ void SourceProcessor::assignStmtHandler(vector<string> tokens, vector<bracketInf
 	}
 
 	//insert next reln record
-	if (oldID > 0) Database::insertNextReln(oldID, newID);
+	if (oldID > 0 && oldID != newID) Database::insertNextReln(oldID, newID);
 
 	line_no++;
 }
 
 void SourceProcessor::callStmtHandler(string instName, int pcdID, int& line_no, int& newID) {
 
-	//insert call reln and get id
+	int oldID = newID;
 
+	//insert call reln and get id
 	Database::insertStatement("call", line_no, line_no, pcdID, newID);
 	Database::insertCallReln(pcdID, instName, line_no);
+
+	//insert next reln record
+	if (oldID > 0 && oldID != newID) Database::insertNextReln(oldID, newID);
 	line_no++;
 }
 
@@ -513,7 +518,7 @@ void SourceProcessor::whileStmtHandler(vector<string> tokens, int pcdID, int& li
 	}
 
 	//insert next reln record
-	if (oldID > 0) Database::insertNextReln(oldID, newID);
+	if (oldID > 0 && oldID != newID) Database::insertNextReln(oldID, newID);
 	line_no++;
 }
 
@@ -538,7 +543,7 @@ void SourceProcessor::ifStmtHandler(vector<string> tokens, int pcdID, int& line_
 	}
 
 	//insert next reln record
-	if (oldID > 0) Database::insertNextReln(oldID, newID);
+	if (oldID > 0 && oldID != newID) Database::insertNextReln(oldID, newID);
 
 	line_no++;
 }
