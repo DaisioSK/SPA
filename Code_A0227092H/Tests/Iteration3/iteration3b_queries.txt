@@ -1,0 +1,405 @@
+1001-  Section 0
+stmt s;
+Select s
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+5000
+1002-  Section 0
+assign a;
+Select a
+4, 5, 7, 9, 11, 12, 13, 14, 15, 16
+5000
+1003-  Section 0
+constant c;
+Select c
+0, 5, 1, 2
+5000
+1004-  Section 0
+while w;
+Select w
+6
+5000
+1005-  Section 0
+if ifs;
+Select ifs
+10
+5000
+1006-  Section 0
+read re; 
+Select re
+1, 2
+5000
+1007-  Section 0
+print pn;
+Select pn
+17
+5000
+1008-  Section 0
+procedure p;
+Select p
+First, Second, Third
+5000
+1009-  Section 0
+variable v;
+Select v
+x, z, i, y, v
+5000
+1010-  Section 0
+call c;
+Select c
+3, 8
+5000
+1101-  Section 1 Modify
+stmt s; variable v;
+Select s such that Modifies(s, v)
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+5000
+1102-  Section 1 Modify
+stmt s; variable v;
+Select v such that Modifies(s, v)
+x, z, i, v
+5000
+1103-  Section 1 Modify
+stmt s; 
+Select s such that Modifies(s, _)
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+5000
+1104-  Section 1 Modify
+stmt s; 
+Select s such that Modifies(s, "z")
+2, 3, 10, 12, 13, 8, 15, 6
+5000
+1105-  Section 1 Modify
+variable v;
+Select v such that Modifies(3, v)
+x, i, z, v
+5000
+1106-  Section 1 Modify
+procedure p; variable v;
+Select p such that Modifies(p, v)
+First, Second, Third
+5000
+1107-  Section 1 Modify
+procedure p; variable v;
+Select v such that Modifies(p, v)
+x, i, z, v
+5000
+1108-  Section 1 Modify
+procedure p;
+Select p such that Modifies(p, "x")
+First, Second
+5000
+1109-  Section 1 Modify
+read re; variable v;
+Select re such that Modifies(re, v)
+1, 2
+5000
+1110-  Section 1 Modify
+read re; variable v;
+Select v such that Modifies(re, v)
+x, z
+5000
+1111-  Section 1 Modify
+read re; 
+Select re such that Modifies(re, _)
+1, 2
+5000
+1112-  Section 1 Modify
+if ifs; variable v;
+Select ifs such that Modifies(ifs, v)
+10
+5000
+1113-  Section 1 Modify
+while w; 
+Select w such that Modifies(w, _)
+6
+5000
+1114-  Section 1 Modify
+call c; 
+Select c such that Modifies(c, "z")
+3, 8
+5000
+1115-  Section 1 Modify
+call c; variable v;
+Select c such that Modifies(c, v)
+3, 8
+5000
+1116-  Section 1 Modify
+call c; variable v;
+Select v such that Modifies(c, v)
+x, i, z, v
+5000
+1117-  Section 1 Modify
+while w; variable v;
+Select v such that Modifies(w, v)
+x, i, z, v
+5000
+1118-  Section 1 Modify
+if ifs; variable v;
+Select v such that Modifies(ifs, v)
+x, z
+5000
+1201-  Section 2 Use
+stmt s; variable v;
+Select s such that Uses(s, v)
+3, 6, 7, 8, 9, 10, 11, 13, 14, 16, 17
+5000
+1202-  Section 2 Use
+stmt s; variable v;
+Select v such that Uses(s, v)
+i, x, y, z, v
+5000
+1203-  Section 2 Use
+stmt s; 
+Select s such that Uses(s, _)
+3, 6, 7, 8, 9, 10, 11, 13, 14, 16, 17
+5000
+1204-  Section 2 Use
+stmt s; 
+Select s such that Uses(s, "z")
+13, 14, 16, 8, 3
+5000
+1205-  Section 2 Use
+variable v;
+Select v such that Uses(3, v)
+i, x, y, z, v
+5000
+1206-  Section 2 Use
+procedure p; variable v;
+Select p such that Uses(p, v)
+First, Second, Third
+5000
+1207-  Section 2 Use
+procedure p; variable v;
+Select v such that Uses(p, v)
+i, x, y, z, v
+5000
+1208-  Section 2 Use
+print pn; variable v;
+Select pn such that Uses(pn, v)
+17
+5000
+1209-  Section 2 Use
+print pn; variable v;
+Select v such that Uses(pn, v)
+v
+5000
+1210-  Section 2 Use
+assign a; variable v;
+Select a such that Uses(a, v)
+7, 9, 11, 13, 14, 16
+5000
+1211-  Section 2 Use
+assign a; variable v;
+Select v such that Uses(a, v)
+x, y, i, z
+5000
+1212-  Section 2 Use
+variable v;
+Select v such that Uses("First", "v")
+x, z, i, y, v
+5000
+1213-  Section 2 Use
+if ifs; variable v;
+Select ifs such that Uses(ifs, v)
+10
+5000
+1214-  Section 2 Use
+if ifs; variable v;
+Select v such that Uses(ifs, v)
+x
+5000
+1215-  Section 2 Use
+while w; variable v;
+Select w such that Uses(w, v)
+6
+5000
+1215-  Section 2 Use
+while w; variable v;
+Select v such that Uses(w, v)
+i, x, y
+5000
+1216-  Section 2 Use
+if ifs;
+Select ifs such that Uses(ifs, _)
+10
+5000
+1217-  Section 2 Use
+while w;
+Select w such that Uses(w, _)
+6
+5000
+1217-  Section 2 Use
+call c;
+Select c such that Uses(c, _)
+3, 8
+5000
+1218-  Section 2 Use
+call c; variable v;
+Select c such that Uses(c, v)
+3, 8
+5000
+1219-  Section 2 Use
+call c; variable v;
+Select v such that Uses(c, v)
+i, x, y, z, v
+5000
+1301-  Section 3 Parent
+stmt s, s1;
+Select s such that Parent(s, s1)
+6, 10
+5000
+1302-  Section 3 Parent
+stmt s, s1;
+Select s1 such that Parent*(s, s1)
+7, 8, 9, 11, 12
+5000
+1303-  Section 3 Parent
+stmt s;
+Select s such that Parent(s, _)
+6, 10
+5000
+1304-  Section 3 Parent
+stmt s;
+Select s such that Parent(6, s)
+7, 8, 9
+5000
+1305-  Section 3 Parent
+stmt s;
+Select s such that Parent*(10, s)
+11, 12
+5000
+1306-  Section 3 Parent
+stmt s;
+Select s such that Parent*(s, 12)
+10
+5000
+1307-  Section 3 Parent
+stmt s, s1;
+Select <s, s1> such that Parent(s, s1)
+6 7, 6 8, 6 9, 10 11, 10 12
+5000
+1401-  Section 4 Next
+stmt s;
+Select s such that Next(6, s)
+7, 10
+5000
+1402-  Section 4 Next
+stmt s;
+Select s such that Next(s, 13)
+11, 12
+5000
+1403-  Section 4 Next
+stmt s;
+Select s such that Next*(s, 10)
+6, 9, 4, 5, 7, 8
+5000
+1404-  Section 4 Next
+stmt s;
+Select s such that Next*(10, s)
+11, 12, 13, 14
+5000
+1405-  Section 4 Next
+stmt s;
+Select s such that Next(_, s)
+none
+5000
+1406-  Section 4 Next
+stmt s;
+Select s such that Next(s, _)
+none
+5000
+1501-  Section 5 Call
+procedure p;
+Select p such that Calls (p, "Third")
+Second
+5000
+1502-  Section 5 Call
+procedure p;
+Select p such that Calls("First", p)
+Second
+5000
+1503-  Section 5 Call
+procedure p, q;
+Select <p, q> such that Calls(p, q)
+First Second, Second Third
+5000
+1504-  Section 5 Call
+procedure p;
+Select p such that Calls*(p, "Third")
+First, Second
+5000
+1505-  Section 5 Call
+procedure p;
+Select p such that Calls*("First", p)
+Second, Third
+5000
+1506-  Section 5 Call
+procedure p, q;
+Select <p, q> such that Calls(p, q)
+First Second, Second Third
+5000
+1507-  Section 5 Call
+procedure p;
+Select p such that Calls (p, _)
+First, Second
+5000
+1508-  Section 5 Call
+procedure p;
+Select p such that Calls (_, p)
+Second, Third
+5000
+1601-  Section 6 pattern
+assign a;
+Select a pattern a(_, _"x"_)
+7, 11, 13, 14
+5000
+1602-  Section 6 pattern
+assign a;
+Select a pattern a(_, _)
+4, 5, 7, 9, 11, 12, 13, 14, 15, 16
+5000
+1603-  Section 6 pattern
+assign a;  variable v;
+Select a pattern a(v, _)
+4, 5, 7, 9, 11, 12, 13, 14, 15, 16
+5000
+1604-  Section 6 pattern
+assign a;
+Select a pattern a("x", _"x"_)
+7, 11, 14
+5000
+1605-  Section 6 pattern
+assign a;
+Select a pattern a("z", _)
+12, 13, 15
+5000
+1701-  Section 6 combination
+assign a;
+Select a such that Parent(6, a) pattern a("x", _"x"_)
+7
+5000
+1702-  Section 6 combination
+variable v; assign a, a1;
+Select v such that Modifies(a, v) pattern a1(v, _"z"_)
+z, x, v
+5000
+1703-  Section 6 combination
+variable v; assign a;
+Select a such that Uses(3, v) pattern a(v, _"y"_)
+7, 14
+5000
+1704-  Section 6 combination
+variable v; assign a, a1;
+Select v such that Modifies(a, v) pattern a1("z", _)
+x, z, i, v
+5000
+1705-  Section 6 combination
+stmt s; assign a;
+Select s such that Parent(s, _) pattern a(_, _"x"_)
+6, 10
+5000
+1706-  Section 6 combination
+print pn; variable v; assign a;
+Select v such that Uses(pn, v) pattern a(_, _)
+v
+5000
