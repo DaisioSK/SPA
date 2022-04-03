@@ -285,9 +285,9 @@ void Database::getInstance(vector<string>& results, vector<queryCond> queryConds
 void Database::appendQueryCond(string& queryString, vector<queryCond> queryConds) {
 	for (queryCond q : queryConds) {
 		if (q.customText)
-			queryString.append(q.value + " \n");
+			queryString.append(trim(q.value) + "\n");
 		else
-			queryString.append(q.joinType + " " + q.key + " = '" + q.value + "' \n");
+			queryString.append(q.joinType + " " + q.key + " = '" + q.value + "'\n");
 	}
 }
 
@@ -566,7 +566,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 
 		//TODO: they have to be under same parent as well. parent must be shared by both sides
 		string condLine = is_recursive_reln ? lineLeft + " < " + lineRight : lineLeft + "+1 = " + lineRight;
-		string condition = " AND " + condLine + " AND " + pcdLeft + " = " + pcdRight;
+		string condition = "AND " + condLine + " AND " + pcdLeft + " = " + pcdRight;
 		condition += "\nAND NOT EXISTS (\n\
 			SELECT parent__id FROM reln_parent\n\
 			WHERE child__id = " + idLeft + " OR child__id = " + idRight + "\n\
@@ -684,6 +684,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 
 		//recursive condition
 		if (!is_recursive_reln) {
+
 			queryCmd.conditions.push_back({ "AND",parentTable.tblAlias + ".level","1",0});
 
 			//if (!rightStmtTable.tblAlias.empty())
@@ -915,7 +916,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 	else if (relnType == "calls") {
 		//iteration 3
 
-		int tmpSize = findTableNum(queryCmd);
+		int tmpSize = 1;
 
 		/* Case 1
 		
@@ -966,7 +967,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
 			
 				if (is_recursive_reln) {
-					queryCmd.conditions.push_back(queryCond{ "", "","AND " + pcdCalleeTable.tblAlias + ".name IN GETID", 1 });
+					queryCmd.conditions.push_back(queryCond{ "", "","AND t3.name IN GETID", 1 });
 					queryCmd.recursivePrefix = "WITH RECURSIVE GETID(N) AS (\
 												VALUES('"+ itemRight.substr(1, itemRight.size() - 2) +"')\
 												UNION\
@@ -1034,7 +1035,7 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
 			
 				if (is_recursive_reln) {
-					queryCmd.conditions.push_back(queryCond{ "", "", "AND " + pcdCallerTable.tblAlias + ".name IN GETID", 1 });
+					queryCmd.conditions.push_back(queryCond{ "", "", "AND t3.name IN GETID", 1 });
 					queryCmd.recursivePrefix = "WITH RECURSIVE GETID(N) AS (\
 												VALUES('"+ itemLeft.substr(1, itemLeft.size() - 2) +"')\
 												UNION\
@@ -1089,29 +1090,17 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 						AND t2.callee__id = t3._id )";
 			}
 			else {
-				
+				queryTable pcdCallerTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "p" };
 				queryTable relnCallTable = queryTable{ "reln_call", "t" + to_string(tmpSize++), "" };
-				queryTable pcdCallerTable = findTable("alias", itemLeft, queryCmd);
-				queryTable pcdCalleeTable = findTable("alias", itemRight, queryCmd);
-
-				if (pcdCallerTable.tblAlias.empty())
-				{
-					queryTable pcdCallerTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "p" };
-					queryCmd.tables.push_back(pcdCallerTable);
-				}
-
-				if (pcdCalleeTable.tblAlias.empty())
-				{
-					queryTable pcdCalleeTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "q" };
-					queryCmd.tables.push_back(pcdCalleeTable);
-				}
-
+				queryTable pcdCalleeTable = queryTable{ "pcd", "t" + to_string(tmpSize++), "q" };
 				queryItem callerItem = queryItem{pcdCallerTable.tblAlias, "name"};
 				queryItem calleeItem = queryItem{ pcdCalleeTable.tblAlias, "name" };
 
 				queryCmd.selections.push_back(callerItem);
 				queryCmd.selections.push_back(calleeItem);
+				queryCmd.tables.push_back(pcdCallerTable);
 				queryCmd.tables.push_back(relnCallTable);
+				queryCmd.tables.push_back(pcdCalleeTable);
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "caller__id", pcdCallerTable.tblAlias, "_id" });
 				queryCmd.connects.push_back(tblConnector{ relnCallTable.tblAlias, "callee__id", pcdCalleeTable.tblAlias, "_id" });
 			}
@@ -1336,7 +1325,7 @@ void Database::patternHandler(string str, queryCmd& queryCmd, vector<queryPatter
 
 		if (pattern_left.find("\"") != string::npos) // Left side is "string"
 		{
-			queryCmd.conditions.push_back({ "",""," AND " + instanceTable.tblAlias + ".name = '" + clean_pattern_left + "'", true});
+			queryCmd.conditions.push_back({ "","","AND " + instanceTable.tblAlias + ".name = '" + clean_pattern_left + "'", true});
 		}
 
 		//join reln_use table
@@ -1382,9 +1371,9 @@ void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryC
 	queryStr = regex_replace(queryStr, std::regex("\,\\s\$"), "");
 
 	//build join conditions
-	queryStr += " \nWHERE 1=1";
+	queryStr += " \nWHERE 1=1 ";
 	for (tblConnector connector : queryCmd.connects) {
-		queryStr += " AND " + connector.aliasLeft + "." + connector.keyLeft + " = " + connector.aliasRight + "." + connector.keyRight + "\n";
+		queryStr += "AND " + connector.aliasLeft + "." + connector.keyLeft + " = " + connector.aliasRight + "." + connector.keyRight + "\n";
 	}
 	queryStr = regex_replace(queryStr, std::regex("1=1 AND "), "");
 
@@ -1632,7 +1621,6 @@ void Database::appendEntityTable(string type, vector<string> aliases, queryCmd& 
 			if (type != "instance") {
 				//queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true });
 				queryCmd.conditions.push_back(queryCond{ " AND", tblAlias + ".type", type , false });
-
 			}
 		}
 		else {
