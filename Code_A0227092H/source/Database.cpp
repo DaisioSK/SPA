@@ -141,6 +141,131 @@ void Database::updateStmt(int id, int line_eno) {
 	sqlite3_exec(dbConnection, updateStmtSQL.c_str(), NULL, 0, &errorMessage);
 }
 
+void Database::updateCallRelnTbls(string caller_name, string callee_name, int stmt_id) {
+	int caller_id, callee_id;
+	vector<string> results;
+
+	getProcedures(results, caller_name);
+	if (results.size() > 0)
+	{
+		caller_id = stoi(results[0]);
+	}
+	else {
+		return;
+	}
+
+	results.clear();
+	getProcedures(results, callee_name);
+	if (results.size() > 0)
+	{
+		callee_id = stoi(results[0]);
+	}
+	else {
+		return;
+	}
+
+	/*UPDATE RELN_USE_PCD TABLE*/
+	//get reln_use_pcd by pcd callee_id
+	dbResults.clear();
+
+	string getUsePcdSQL = "SELECT * FROM reln_use_pcd WHERE pcd__id = '" + to_string(callee_id) + "'";
+	sqlite3_exec(dbConnection, getUsePcdSQL.c_str(), callback, 0, &errorMessage);
+	
+	//loop through and duplicate records with caller_id as pcd_id
+	for (vector<string> dbRow : dbResults) {		
+		if (dbRow.size() == 2)
+		{
+			dbRow[0] = to_string(caller_id);
+			insertPcdUseReln(stoi(dbRow[0]), stoi(dbRow[1]));
+		}
+	}
+
+	/*UPDATE RELN_USE TABLE*/
+	//get reln_use by callee_id
+	dbResults.clear();
+	string getUseSQL = "SELECT reln_use.stmt__id, reln_use.instance__id\
+							FROM reln_use, pcd\
+							WHERE reln_use.stmt__id >= pcd.line_sno\
+							AND reln_use.stmt__id <= pcd.line_eno\
+							AND pcd._id = '" + to_string(callee_id) + "'";
+	sqlite3_exec(dbConnection, getUseSQL.c_str(), callback, 0, &errorMessage);
+
+	//loop through and duplicate records with stmt_id as call stmt_id
+	for (vector<string> dbRow : dbResults) {
+		if (dbRow.size() == 2)
+		{
+			dbRow[0] = to_string(stmt_id);
+			insertUseReln(stoi(dbRow[0]), stoi(dbRow[1]));
+		}
+	}
+
+	/*UPDATE RELN_MODIFY_PCD TABLE*/
+	//get reln_modify_pcd by pcd callee_id
+	dbResults.clear();
+
+	string getModifyPcdSQL = "SELECT * FROM reln_modify_pcd WHERE pcd__id = '" + to_string(callee_id) + "'";
+	sqlite3_exec(dbConnection, getModifyPcdSQL.c_str(), callback, 0, &errorMessage);
+
+	//loop through and duplicate records with caller_id as pcd_id
+	for (vector<string> dbRow : dbResults) {
+		if (dbRow.size() == 3)
+		{
+			dbRow[0] = to_string(caller_id);
+			insertPcdModifyReln(stoi(dbRow[0]), stoi(dbRow[1]), dbRow[2]);
+		}
+	}
+
+	/*UPDATE RELN_MODIFY TABLE*/
+	dbResults.clear();
+	string getModifySQL = "SELECT reln_modify.stmt__id, reln_modify.instance__id, reln_modify.expr\
+							FROM reln_modify, pcd\
+							WHERE reln_modify.stmt__id >= pcd.line_sno\
+							AND reln_modify.stmt__id <= pcd.line_eno\
+							AND pcd._id = '" + to_string(callee_id) + "'";
+	sqlite3_exec(dbConnection, getModifySQL.c_str(), callback, 0, &errorMessage);
+
+	//loop through and duplicate records with stmt_id as call stmt_id
+	for (vector<string> dbRow : dbResults) {
+		if (dbRow.size() == 3)
+		{
+			dbRow[0] = to_string(stmt_id);
+			insertModifyReln(stoi(dbRow[0]), stoi(dbRow[1]), dbRow[2]);
+		}
+	}
+}
+
+void Database::updateParentRelnTbls(int parent_id, int child_id) {
+	
+
+	/*UPDATE RELN_MODIFY TABLE*/
+	dbResults.clear();
+	string getModifySQL = "SELECT * FROM reln_modify WHERE reln_modify.stmt__id = '" + to_string(child_id) + "'";
+	sqlite3_exec(dbConnection, getModifySQL.c_str(), callback, 0, &errorMessage);
+
+	//loop through and duplicate records with stmt_id as call stmt_id
+	for (vector<string> dbRow : dbResults) {
+		if (dbRow.size() == 3)
+		{
+			dbRow[0] = to_string(parent_id);
+			insertModifyReln(stoi(dbRow[0]), stoi(dbRow[1]), dbRow[2]);
+		}
+	}
+
+	/*UPDATE RELN_USE TABLE*/
+	dbResults.clear();
+	string getUseSQL = "SELECT * FROM reln_use WHERE reln_uses.stmt__id = '" + to_string(child_id) + "'";
+	sqlite3_exec(dbConnection, getUseSQL.c_str(), callback, 0, &errorMessage);
+
+	//loop through and duplicate records with stmt_id as call stmt_id
+	for (vector<string> dbRow : dbResults) {
+		if (dbRow.size() == 2)
+		{
+			dbRow[0] = to_string(parent_id);
+			insertUseReln(stoi(dbRow[0]), stoi(dbRow[1]));
+		}
+	}
+}
+
 void Database::getInstance(vector<string>& results, vector<queryCond> queryConds, vector<int> cols) {
 	// clear the existing results
 	dbResults.clear();
@@ -214,7 +339,7 @@ void Database::insertPcdUseReln(int pcd__id, int instance__id) {
 
 
 //method to insert a call relationship
-void Database::insertCallReln(int caller__id, string callee) {
+void Database::insertCallReln(int caller__id, string callee, int stmt__id) {
 
 	int callee_id = -1;
 	vector<string> procedures;
@@ -228,9 +353,10 @@ void Database::insertCallReln(int caller__id, string callee) {
 		insertProcedure(callee, NULL, callee_id);
 	}
 
-	string sql = "INSERT INTO reln_call (caller__id, callee__id) VALUES (";
+	string sql = "INSERT INTO reln_call (caller__id, callee__id, stmt__id) VALUES (";
 	sql.append("'" + to_string(caller__id) + "', ");
-	sql.append("'" + to_string(callee_id) + "');");
+	sql.append("'" + to_string(callee_id) + "', ");
+	sql.append("'" + to_string(stmt__id) + "');");
 
 	sqlite3_exec(dbConnection, sql.c_str(), NULL, 0, &errorMessage);
 }
@@ -587,15 +713,27 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 			leftTable = { "stmt", "t" + to_string(++tmpSize), "" };
 			queryCmd.tables.push_back(leftTable);
 			queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".line_sno",itemLeft,0 });
+			//queryCmd.recursivePrefix = "WITH RECURSIVE GETSTMT(N) as\
+										(\
+										VALUES(3)\
+										UNION\
+										SELECT stmt._id\
+										FROM stmt, pcd caller, reln_call, pcd callee, GETSTMT\
+										WHERE reln_call.caller__id = caller._id\
+										AND reln_call.callee__id = callee._id\
+										AND stmt.pcd__id = callee._id\
+										AND reln_call.stmt__id = GETSTMT.N\
+										)";
+			//queryCmd.conditions.push_back(queryCond{"", "", " AND " + leftTable.tblAlias + "IN GETSTMT"});
 		}
 		else {
 			vector<string> results;
-			getProcedures(results, itemLeft);
+			getProcedures(results, trim(itemLeft, '\"'));
 			if (!results.empty()) {
 				//pcd name
 				leftTable = { "pcd", "t" + to_string(++tmpSize), "" };
 				queryCmd.tables.push_back(leftTable);
-				queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".name",itemLeft,0 });
+				queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".name",trim(itemLeft, '\"'),0 });
 			}
 			else {
 				leftTable = findTable("alias", itemLeft, queryCmd); //pcd or stmt table
@@ -633,6 +771,86 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		{
 			queryCmd.connects.push_back(tblConnector{ useTable.tblAlias, "instance__id", rightTable.tblAlias, "_id" });
 		}
+
+		
+		/*bool returnStmt = false;
+		bool returnPcd = false;
+		bool returnVar = false;
+		vector<queryItem> selections = queryCmd.selections;
+		vector<queryTable> tables = queryCmd.tables;
+
+		for (int i = 0; i < selections.size(); i++)
+		{
+			queryItem item = selections.at(i);
+			for (int j = 0; j < tables.size(); j++)
+			{
+				queryTable tbl = tables.at(j);
+				if (tbl.tblAlias == item.tableALias)
+				{
+					if (tbl.tblName == "stmt")
+					{
+						returnStmt = true;
+					}
+					else if (tbl.tblName == "pcd")
+					{
+						returnPcd = true;
+					}
+					else if (tbl.tblName == "instance")
+					{
+						returnVar = true;
+					}
+					
+				}
+			}
+		}
+
+		string postfix;
+		if (returnStmt)
+		{
+			postfix = " UNION\
+							SELECT reln_call.stmt__id\
+							FROM reln_call, instance, stmt, reln_use_pcd \
+							WHERE reln_call.callee__id = instance.pcd__id\
+							AND reln_call.stmt__id = stmt._id\
+							AND reln_call.callee__id = reln_use_pcd.pcd__id";
+			}
+			else {
+				postfix = " UNION\
+							SELECT pcd.name\
+							FROM reln_call, instance, stmt, pcd\
+							WHERE reln_call.stmt__id = stmt._id\
+							AND reln_call.callee__id = instance.pcd__id\
+							AND reln_call.caller__id = pcd._id";
+			}
+
+			if (is_number(itemLeft))
+			{
+				postfix += " AND stmt._id = " + itemLeft;
+			}
+
+			if (itemRight.find("\"") != string::npos) {
+				postfix += " AND instance.name = '" + itemRight.substr(1, itemRight.size() - 2) + "'";
+			}
+
+			for (int i = 0; i < queryCmd.conditions.size(); i++)
+			{
+				queryCond cond = queryCmd.conditions.at(i);
+				if (cond.key.find("type") != string::npos)
+				{
+					if (cond.value == "read" || cond.value == "print" || cond.value == "assign"
+						|| cond.value == "while" || cond.value == "if" || cond.value == "call")
+					{
+						postfix += " AND stmt.type = '" + cond.value + "'";
+					}
+					else if (cond.value == "variable" || cond.value == "constant")
+					{
+						postfix += " AND instance.type = '" + cond.value + "'";
+					}
+				}
+			}
+
+			queryCmd.postfix = postfix;
+		}*/
 	}
 
 	else if (relnType == "modifies") {
@@ -648,13 +866,13 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		}
 		else {
 			vector<string> results;
-			getProcedures(results, itemLeft);
+			getProcedures(results, trim(itemLeft, '\"'));
 			if (!results.empty()) {
 				//pcd name
 				leftTable = { "pcd", "t" + to_string(++tmpSize), "" };
 				colLeft = "pcd__id";
 				queryCmd.tables.push_back(leftTable);
-				queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".name",itemLeft,0 });
+				queryCmd.conditions.push_back({ "AND",leftTable.tblAlias + ".name", trim(itemLeft, '\"'), 0 });
 			}
 			else {
 				leftTable = findTable("alias", itemLeft, queryCmd); //pcd or stmt table
@@ -674,15 +892,17 @@ void Database::suchThatHandler(string str, queryCmd& queryCmd, vector<queryNextC
 		}
 
 		//modify relations
-		queryTable modifyTable = queryTable{ "reln_modify", "t" + to_string(++tmpSize), "" };
-		queryCmd.tables.push_back(modifyTable);
-
+		queryTable modifyTable;
 		if (leftTable.tblName == "pcd")
 		{
-			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", rightTable.tblAlias, colLeft });
+			modifyTable = queryTable{ "reln_modify_pcd", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(modifyTable);
+			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", modifyTable.tblAlias, colLeft });
 		}
 		else if (leftTable.tblName == "stmt")
 		{
+			modifyTable = queryTable{ "reln_modify", "t" + to_string(++tmpSize), "" };
+			queryCmd.tables.push_back(modifyTable);
 			queryCmd.connects.push_back(tblConnector{ leftTable.tblAlias, "_id", modifyTable.tblAlias, colLeft });
 		}
 
@@ -1160,10 +1380,6 @@ void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryC
 	//build where clause
 	appendQueryCond(queryStr, queryCmd.conditions);
 
-	//finish and return
-	queryStr = regex_replace(queryStr, std::regex("\\s\*\$"), "");
-	queryStr += ";";
-
 	//test purpose
 	//queryStr = "SELECT stmt.line_sno AS a, reln_modify.expr \
 	//	FROM reln_modify , stmt\
@@ -1172,6 +1388,15 @@ void Database::queryCmdToResult(vector<vector<string>>& results, queryCmd queryC
 	if (!queryCmd.recursivePrefix.empty()) {
 		queryStr = queryCmd.recursivePrefix + queryStr;
 	}
+
+	if (!queryCmd.postfix.empty())
+	{
+		queryStr += queryCmd.postfix;
+	}
+
+	//finish and return
+	queryStr = regex_replace(queryStr, std::regex("\\s\*\$"), "");
+	queryStr += ";";
 
 	cout << "run query: " << queryStr << endl;
 	sqlite3_exec(dbConnection, queryStr.c_str(), callback, 0, &errorMessage);
@@ -1394,13 +1619,15 @@ void Database::appendEntityTable(string type, vector<string> aliases, queryCmd& 
 		else if (type == "variable" || type == "constant" || type == "instance") {
 			tblName = "instance";
 			if (type != "instance") {
-				queryCmd.conditions.push_back(queryCond{ "", "", "AND " + tblAlias + ".type = '" + type + "'", true });
+				//queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true });
+				queryCmd.conditions.push_back(queryCond{ " AND", tblAlias + ".type", type , false });
 			}
 		}
 		else {
 			tblName = "stmt";
 			if (type != "stmt") {
-				queryCmd.conditions.push_back(queryCond{ "", "", "AND " + tblAlias + ".type = '" + type + "'", true });
+				//queryCmd.conditions.push_back(queryCond{ "", "", " AND " + tblAlias + ".type = '" + type + "'", true });
+				queryCmd.conditions.push_back(queryCond{ " AND", tblAlias + ".type", type , false });
 			}
 		}
 

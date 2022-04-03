@@ -1,0 +1,27 @@
+procedure First {
+	read x;
+	read z;
+	call Second; 
+}
+procedure Second {
+	x = 0;
+	i = 5;
+	while (i > 1) {
+		x = x + 2 * y;
+		call Third;
+		i = i - 1; 
+	}
+	if (x > 0) then {
+		x = x + 1; 
+	}else {
+		z = 1; 
+	}
+	z = z + x + i;
+	x = x * y + z; 
+}
+
+procedure Third {
+	z = 5;
+	v = z;
+	print v;
+}

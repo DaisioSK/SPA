@@ -13,6 +13,19 @@ struct bracketInfo
 	int db_id;
 };
 
+struct callReln
+{
+	string caller_name;
+	string callee_name;
+	int stmt_id;
+};
+
+struct parentReln
+{
+	int parent_id;
+	int child_id;
+};
+
 class SourceProcessor {
 public:
 	// method for processing the source program
@@ -36,5 +49,7 @@ public:
 	static int getInstID(string name, int pcdID, string type);
 
 	static void lowercase(string& str);
+
+	static void updateCallRelnTables(vector<callReln> callRelnArr, vector<parentReln> parentRelnArr);
 
 };

@@ -52,6 +52,7 @@ struct queryCmd {
 	vector<tblConnector> connects;
 	vector<queryCond> conditions;
 	string recursivePrefix;
+	string postfix;
 };
 
 struct tableEdge {
@@ -108,7 +109,7 @@ public:
 	static void insertPcdUseReln(int pcd__id, int instance__id);
 
 	//method to insert a call relationship
-	static void insertCallReln(int caller__id, string callee);
+	static void insertCallReln(int caller__id, string callee, int stmt__id);
 
 	//method to insert a next relationship
 	static void insertNextReln(int cur_stmt__id, int next_stmt__id);
@@ -138,6 +139,9 @@ public:
 	// method to update a procedure into the database
 	static void updateStmt(int id, int line_eno);
 
+	static void updateCallRelnTbls(string caller_name, string callee_name, int stmt_id);
+
+	static void updateParentRelnTbls(int parent_id, int child_id);
 
 	/**
 		query parser

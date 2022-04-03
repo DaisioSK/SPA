@@ -48,9 +48,10 @@ CREATE TABLE reln_use (
 
 DROP TABLE IF EXISTS reln_call;
 CREATE TABLE reln_call (
-    caller__id INTEGER REFERENCES stmt(`_id`),
+    caller__id INTEGER REFERENCES pcd(`_id`),
     callee__id INTEGER REFERENCES pcd(`_id`),
-    PRIMARY KEY (caller__id, callee__id)
+    stmt__id INTEGER REFERENCES stmt(`_id`),
+    PRIMARY KEY (caller__id, callee__id, stmt__id)
 );
 
 DROP TABLE IF EXISTS reln_next;
