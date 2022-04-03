@@ -373,32 +373,32 @@ assign a;
 Select a pattern a("flag", _)
 1, 20
 5000
-1701-  Section 6 combination
+1701-  Section 7 combination
 assign a;
 Select a such that Parent(14, a) pattern a("cenX", _"x"_)
 16
 5000
-1702-  Section 6 combination
+1702-  Section 7 combination
 variable v; assign a, a1;
 Select v such that Modifies(a, v) pattern a1(v, _"count"_)
 count, cenX, cenY
 5000
-1703-  Section 6 combination
+1703-  Section 7 combination
 variable v; assign a;
 Select a such that Uses(2, v) pattern a(v, _"cenX"_)
 16, 21
 5000
-1704-  Section 6 combination
+1704-  Section 7 combination
 variable v; assign a, a1;
 Select v such that Modifies(a, v) pattern a1("cenX", _)
 flag, count, cenX, cenY, normSq
 5000
-1705-  Section 6 combination
+1705-  Section 7 combination
 stmt s; assign a;
 Select s such that Parent(s, _) pattern a(_, _"flag"_)
 none
 5000
-1706-  Section 6 combination
+1706-  Section 7 combination
 print pn; variable v; assign a;
 Select v such that Uses(pn, v) pattern a(_, _)
 flag, cenX, cenY, normSq

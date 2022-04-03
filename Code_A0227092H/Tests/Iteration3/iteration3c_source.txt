@@ -1,0 +1,79 @@
+procedure proc { 
+	i = 5;
+	x = 2;
+	y = x + 1 + i* 3/(5-7);
+	bx = 0;
+	i = i - 1;
+	read x; 
+	read y;		 
+	i = x + y * 3;
+	y = y + x + i; 
+	print i;
+    call NonNesting01;
+}
+
+procedure NonNesting01 { 
+    read a;
+    test001 =  a + b + c + d;
+    print code9;
+
+    while (10 < a) {
+        read a;
+        test02 = 20 + (a - b) * (c % d);
+        print b;
+    }
+
+    if (10 > a) then {
+        print coding7;
+        a = b + c + d;
+        read coding7;
+    } else {
+        print test001;
+        a = b + c + d;
+        a = b + c + d;
+        read b;
+    }
+
+    while (a > c) {
+        read a;
+        print b;
+        test002 = (c / 30 % d);
+        read b;
+        print a;
+        call NestedWhileIf;
+    }
+}
+
+
+procedure NestedWhileIf { 
+    read a;
+    b = 20;
+    print d;
+
+    while (a < 30) {
+        a = b + c;
+        while (a < 10) {
+            a = 10;
+        }
+        if (a > 10) then {
+            if (c < 30) then {
+                d = b;
+            } else {
+                c = a + b;
+            }
+        } else {
+            while (a < 10) {
+                print c;
+            }
+            c = a + b;
+        }
+    }
+
+    add = a * b * c;                
+    print add;
+    if (add < 0) then {
+        print negative;
+    } else {
+        print positive;
+    }
+}

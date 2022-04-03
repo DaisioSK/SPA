@@ -373,32 +373,32 @@ assign a;
 Select a pattern a("z", _)
 12, 13, 15
 5000
-1701-  Section 6 combination
+1701-  Section 7 combination
 assign a;
 Select a such that Parent(6, a) pattern a("x", _"x"_)
 7
 5000
-1702-  Section 6 combination
+1702-  Section 7 combination
 variable v; assign a, a1;
 Select v such that Modifies(a, v) pattern a1(v, _"z"_)
 z, x, v
 5000
-1703-  Section 6 combination
+1703-  Section 7 combination
 variable v; assign a;
 Select a such that Uses(3, v) pattern a(v, _"y"_)
 7, 14
 5000
-1704-  Section 6 combination
+1704-  Section 7 combination
 variable v; assign a, a1;
 Select v such that Modifies(a, v) pattern a1("z", _)
 x, z, i, v
 5000
-1705-  Section 6 combination
+1705-  Section 7 combination
 stmt s; assign a;
 Select s such that Parent(s, _) pattern a(_, _"x"_)
 6, 10
 5000
-1706-  Section 6 combination
+1706-  Section 7 combination
 print pn; variable v; assign a;
 Select v such that Uses(pn, v) pattern a(_, _)
 v

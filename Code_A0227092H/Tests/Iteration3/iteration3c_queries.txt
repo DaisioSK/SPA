@@ -1,0 +1,406 @@
+1001-  Section 0
+stmt s;
+Select s
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 ,32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44 ,45, 46, 47, 48, 49, 50, 51, 52
+5000
+1002-  Section 0
+assign a;
+Select a
+1, 2, 3, 4, 5, 8, 9, 13, 17, 21, 24, 25, 30, 35, 38, 40, 43, 44, 47, 48
+5000
+1003-  Section 0
+constant c;
+Select c
+5, 2, 0, 3, 7, 20, 30, 10, 1
+5000
+1004-  Section 0
+while w;
+Select w
+15, 27, 37, 39, 45
+5000
+1005-  Section 0
+if ifs;
+Select ifs
+19, 41, 42, 50
+5000
+1006-  Section 0
+read re; 
+Select re
+6, 7, 12, 16, 22, 26, 28, 31, 34
+5000
+1007-  Section 0
+print pn;
+Select pn
+10, 14, 18, 20, 23, 29, 32, 36, 46, 49, 51, 52
+5000
+1008-  Section 0
+procedure p;
+Select p
+proc, NonNesting01, NestedWhileIf
+5000
+1009-  Section 0
+variable v;
+Select v
+i, x, y, bx, a, test001, b, c, d, test02, code9, coding7, test002, add, negative, positive
+5000
+1010-  Section 0
+call c;
+Select c
+11, 33
+5000
+1101-  Section 1 Modify
+stmt s; variable v;
+Select s such that Modifies(s, v)
+1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 12, 16, 17, 21, 22, 24, 25, 26, 28, 30, 31, 35, 38, 40, 43, 44, 47, 48, 11, 15, 19, 27, 37, 41, 42, 33, 34, 39
+5000
+1102-  Section 1 Modify
+stmt s; variable v;
+Select v such that Modifies(s, v)
+i, x, y, bx, test001, test02, coding7, test002, a, b, c, add, d
+5000
+1103-  Section 1 Modify
+stmt s; 
+Select s such that Modifies(s, _)
+1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 12, 16, 17, 21, 22, 24, 25, 26, 28, 30, 31, 35, 38, 40, 43, 44, 47, 48, 11, 15, 19, 27, 37, 41, 42, 33, 34, 39
+5000
+1104-  Section 1 Modify
+stmt s; 
+Select s such that Modifies(s, "a")
+12, 16, 21, 24, 25, 28, 34, 38, 40, 11, 15, 19, 27, 37, 39, 33
+5000
+1105-  Section 1 Modify
+variable v;
+Select v such that Modifies(11, v)
+test001, test02, coding7, test002, a, b, c, add, d
+5000
+1106-  Section 1 Modify
+procedure p; variable v;
+Select p such that Modifies(p, v)
+proc, NonNesting01, NestedWhileIf
+5000
+1107-  Section 1 Modify
+procedure p; variable v;
+Select v such that Modifies(p, v)
+i, x, y, bx, test001, test02, coding7, test002, a, b, c, add, d
+5000
+1108-  Section 1 Modify
+procedure p;
+Select p such that Modifies(p, "test001")
+proc, NonNesting01
+5000
+1109-  Section 1 Modify
+read re; variable v;
+Select re such that Modifies(re, v)
+6, 7, 12, 16, 22, 26, 28, 31, 34
+5000
+1110-  Section 1 Modify
+read re; variable v;
+Select v such that Modifies(re, v)
+x, y, a, coding7, b
+5000
+1111-  Section 1 Modify
+read re; 
+Select re such that Modifies(re, _)
+6, 7, 12, 16, 22, 26, 28, 31, 34
+5000
+1112-  Section 1 Modify
+if ifs; variable v;
+Select ifs such that Modifies(ifs, v)
+19, 41, 42
+5000
+1113-  Section 1 Modify
+while w; 
+Select w such that Modifies(w, _)
+15, 27, 37, 39
+5000
+1114-  Section 1 Modify
+call c; 
+Select c such that Modifies(c, "add")
+11, 33
+5000
+1115-  Section 1 Modify
+call c; variable v;
+Select c such that Modifies(c, v)
+11, 33
+5000
+1116-  Section 1 Modify
+call c; variable v;
+Select v such that Modifies(c, v)
+test001, test02, coding7, test002, a, b, c, add, d
+5000
+1117-  Section 1 Modify
+while w; variable v;
+Select v such that Modifies(w, v)
+a, test02, b, test002, d, c, add
+5000
+1118-  Section 1 Modify
+if ifs; variable v;
+Select v such that Modifies(ifs, v)
+a, coding7, b, d, c
+5000
+1201-  Section 2 Use
+stmt s; variable v;
+Select s such that Uses(s, v)
+3, 5, 8, 9, 10, 11, 13, 14, 15, 17, 18, 19,  20, 21, 23, 24, 25, 27, 29, 30, 32, 33, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52
+5000
+1202-  Section 2 Use
+stmt s; variable v;
+Select v such that Uses(s, v)
+x, i, y, a, b, c, d, code9, coding7, test001, add, negative, positive
+5000
+1203-  Section 2 Use
+stmt s; 
+Select s such that Uses(s, _)
+3, 5, 8, 9, 10, 11, 13, 14, 15, 17, 18, 19,  20, 21, 23, 24, 25, 27, 29, 30, 32, 33, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52
+5000
+1204-  Section 2 Use
+stmt s; 
+Select s such that Uses(s, "a")
+11, 13, 15, 17, 19, 27, 32, 33, 37, 39, 41, 42, 44, 45, 47, 48
+5000
+1205-  Section 2 Use
+variable v;
+Select v such that Uses(11, v)
+a, b, c, d, code9, coding7, test001, add, negative, positive
+5000
+1206-  Section 2 Use
+procedure p; variable v;
+Select p such that Uses(p, v)
+proc, NonNesting01, NestedWhileIf
+5000
+1207-  Section 2 Use
+procedure p; variable v;
+Select v such that Uses(p, v)
+x, i, y, a, b, c, d, code9, coding7, test001, add, negative, positive
+5000
+1208-  Section 2 Use
+print pn; variable v;
+Select pn such that Uses(pn, v)
+10, 14, 18, 20, 23, 29, 32, 36, 46, 49, 51, 52
+5000
+1209-  Section 2 Use
+print pn; variable v;
+Select v such that Uses(pn, v)
+i, code9, b, coding7, test001, a, d, add, negative, positive
+5000
+1210-  Section 2 Use
+assign a; variable v;
+Select a such that Uses(a, v)
+3, 5, 8, 9, 13, 17, 21, 24, 25, 30, 38, 43, 44, 47, 48
+5000
+1211-  Section 2 Use
+assign a; variable v;
+Select v such that Uses(a, v)
+x, i, y, a, b, c, d
+5000
+1212-  Section 2 Use
+variable v;
+Select v such that Uses("proc", "add")
+x, i, y, a, b, c, d, code9, coding7, test001, add, negative, positive
+5000
+1213-  Section 2 Use
+if ifs; variable v;
+Select ifs such that Uses(ifs, v)
+19, 41 ,42, 50
+5000
+1214-  Section 2 Use
+if ifs; variable v;
+Select v such that Uses(ifs, v)
+a, coding7, b, c, d, test001, negative, positive
+5000
+1215-  Section 2 Use
+while w; variable v;
+Select w such that Uses(w, v)
+15, 27, 37, 39, 45
+5000
+1215-  Section 2 Use
+while w; variable v;
+Select v such that Uses(w, v)
+a, b, c, d
+5000
+1216-  Section 2 Use
+if ifs;
+Select ifs such that Uses(ifs, _)
+19, 41 ,42, 50
+5000
+1217-  Section 2 Use
+while w;
+Select w such that Uses(w, _)
+15, 27, 37, 39, 45
+5000
+1217-  Section 2 Use
+call c;
+Select c such that Uses(c, _)
+11, 33
+5000
+1218-  Section 2 Use
+call c; variable v;
+Select c such that Uses(c, v)
+11, 33
+5000
+1219-  Section 2 Use
+call c; variable v;
+Select v such that Uses(c, v)
+a, b, c, d, code9, coding7, test001, add, negative, positive
+5000
+1301-  Section 3 Parent
+stmt s, s1;
+Select s such that Parent(s, s1)
+15, 19, 27, 37, 39, 41, 42, 45, 50
+5000
+1302-  Section 3 Parent
+stmt s, s1;
+Select s1 such that Parent*(s, s1)
+16, 17, 18, 20, 21, 22, 23, 24, 25, 16, 28, 29, 30, 31, 32, 33, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 51, 52
+5000
+1303-  Section 3 Parent
+stmt s;
+Select s such that Parent(s, _)
+15, 19, 27, 37, 39, 41, 42, 45, 50
+5000
+1304-  Section 3 Parent
+stmt s;
+Select s such that Parent(37, s)
+38, 39, 40, 41, 42, 43, 44, 45, 46, 47
+5000
+1305-  Section 3 Parent
+stmt s;
+Select s such that Parent(11, s)
+none
+5000
+1306-  Section 3 Parent
+stmt s;
+Select s such that Parent*(s, 47)
+41, 37
+5000
+1307-  Section 3 Parent
+stmt s, s1;
+Select <s, s1> such that Parent(s, s1)
+none
+5000
+1401-  Section 4 Next
+stmt s;
+Select s such that Next(19, s)
+20, 23
+5000
+1402-  Section 4 Next
+stmt s;
+Select s such that Next(s, 19)
+15, 18
+5000
+1403-  Section 4 Next
+stmt s;
+Select s such that Next*(s, 5)
+1, 2, 3, 4
+5000
+1404-  Section 4 Next
+stmt s;
+Select s such that Next*(48, s)
+49, 50, 51, 52
+5000
+1405-  Section 4 Next
+stmt s;
+Select s such that Next(_, s)
+none
+5000
+1406-  Section 4 Next
+stmt s;
+Select s such that Next(s, _)
+none
+5000
+1501-  Section 5 Call
+procedure p;
+Select p such that Calls (p, "NestedWhileIf")
+NonNesting01
+5000
+1502-  Section 5 Call
+procedure p;
+Select p such that Calls("proc", p)
+NonNesting01, NestedWhileIf
+5000
+1503-  Section 5 Call
+procedure p, q;
+Select <p, q> such that Calls(p, q)
+proc NonNesting01, NonNesting01 NestedWhileIf
+5000
+1504-  Section 5 Call
+procedure p;
+Select p such that Calls*(p, "NestedWhileIf")
+proc, NonNesting01
+5000
+1505-  Section 5 Call
+procedure p;
+Select p such that Calls*("proc", p)
+NonNesting01, NestedWhileIf
+5000
+1506-  Section 5 Call
+procedure p, q;
+Select <p, q> such that Calls(p, q)
+proc NonNesting01, NonNesting01 NestedWhileIf
+5000
+1507-  Section 5 Call
+procedure p;
+Select p such that Calls (p, _)
+proc, NonNesting01
+5000
+1508-  Section 5 Call
+procedure p;
+Select p such that Calls (_, p)
+NonNesting01, NestedWhileIf
+5000
+1601-  Section 6 pattern
+assign a;
+Select a pattern a(_, _"a"_)
+13, 17, 44, 47, 48
+5000
+1602-  Section 6 pattern
+assign a;
+Select a pattern a(_, _)
+1, 2, 3, 4, 5, 8, 9, 13, 17, 21, 24, 25, 30, 35, 38, 40, 43, 44, 47, 48
+5000
+1603-  Section 6 pattern
+assign a;  variable v;
+Select a pattern a(v, _)
+1, 2, 3, 4, 5, 8, 9, 13, 17, 21, 24, 25, 30, 35, 38, 40, 43, 44, 47, 48
+5000
+1604-  Section 6 pattern
+assign a;
+Select a pattern a("y", _"x"_)
+3, 9
+5000
+1605-  Section 6 pattern
+assign a;
+Select a pattern a("add", _)
+48
+5000
+1701-  Section 7 combination
+assign a;
+Select a such that Parent(14, a) pattern a("cenX", _"x"_)
+16
+5000
+1702-  Section 7 combination
+variable v; assign a, a1;
+Select v such that Modifies(a, v) pattern a1(v, _"count"_)
+count, cenX, cenY
+5000
+1703-  Section 7 combination
+variable v; assign a;
+variable v; assign a;
+Select a such that Uses(2, v) pattern a(v, _"cenX"_)
+16, 21
+5000
+1704-  Section 7 combination
+variable v; assign a, a1;
+Select v such that Modifies(a, v) pattern a1("cenX", _)
+flag, count, cenX, cenY, normSq
+5000
+1705-  Section 7 combination
+stmt s; assign a;
+Select s such that Parent(s, _) pattern a(_, _"flag"_)
+none
+5000
+1706-  Section 7 combination
+print pn; variable v; assign a;
+Select v such that Uses(pn, v) pattern a(_, _)
+flag, cenX, cenY, normSq
+5000
